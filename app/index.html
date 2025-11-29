@@ -2,12 +2,12 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>LocalSpeed Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     
-    <!-- NOWE: Załadowanie podzielonych plików CSS (Używamy /css/) -->
+    <!-- CSS - Teraz serwowane automatycznie przez app.mount("/css") -->
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/header.css">
     <link rel="stylesheet" href="/css/dashboard.css">
@@ -16,9 +16,8 @@
     <link rel="stylesheet" href="/css/history.css">
     <link rel="stylesheet" href="/css/toast.css">
     
-    <!-- Biblioteka Chart.js do wykresów w tle -->
+    <!-- Biblioteki zewnętrzne -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Biblioteka Gauge (Zegar) -->
     <script src="https://unpkg.com/canvas-gauges@2.1.7/gauge.min.js"></script>
 </head>
 <body>
@@ -26,11 +25,11 @@
     <header>
         <div class="logo">
             <span class="material-icons">speed</span>
-            LocalSpeed
+            LocalSpeed <small style="font-size: 0.6em; opacity: 0.7; margin-left: 5px;">PRO</small>
         </div>
         <div class="controls">
-            <button id="lang-toggle" class="btn-icon"><span>EN</span></button>
-            <button id="theme-toggle" class="btn-icon"><span class="material-icons" id="theme-icon">dark_mode</span></button>
+            <button id="lang-toggle" class="btn-icon" aria-label="Język"><span>EN</span></button>
+            <button id="theme-toggle" class="btn-icon" aria-label="Motyw"><span class="material-icons" id="theme-icon">dark_mode</span></button>
         </div>
     </header>
 
@@ -93,7 +92,10 @@
 
         <div class="bottom-section">
             <div class="history-container">
-                <h3 data-key="history_title">Historia Pomiarów</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 data-key="history_title">Historia Pomiarów</h3>
+                    <!-- Opcjonalne miejsce na eksport CSV w przyszłości -->
+                </div>
                 
                 <div class="table-wrapper">
                     <table id="history-table">
@@ -147,7 +149,7 @@
 
     <div id="toast-container"></div>
 
-    <!-- Ładowanie main.js jako modułu ES6 z /js/main.js -->
+    <!-- Moduły JS - Serwowane przez app.mount("/js") -->
     <script type="module" src="/js/main.js"></script>
 </body>
 </html>

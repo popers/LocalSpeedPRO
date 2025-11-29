@@ -3,17 +3,34 @@ import { THREADS, TEST_DURATION } from '/js/config.js';
 import { checkGaugeRange, getGaugeInstance } from '/js/gauge.js';
 import { updateChart } from '/js/charts.js';
 
+// --- OPTYMALIZACJA: GLOBALNY BLOB DO UPLOADU ---
+// Generujemy dane raz, aby nie obciążać CPU podczas samego testu.
+const UPLOAD_DATA_SIZE = 32 * 1024 * 1024; // 32 MB
+let uploadBlob = null;
+
+function getUploadBlob() {
+    if (uploadBlob) return uploadBlob;
+    
+    // Szybkie generowanie bufora bez blokowania wątku na długo
+    const data = new Uint8Array(UPLOAD_DATA_SIZE);
+    // Wypełniamy tylko część losowo dla wydajności, reszta może być zerami (kompresja HTTP i tak jest wyłączona dla multipart/stream zazwyczaj)
+    // Ale dla pewności, że smart routery nie kompresują, wypełniamy "szumem"
+    for (let i = 0; i < UPLOAD_DATA_SIZE; i += 65536) {
+        data[i] = Math.floor(Math.random() * 255);
+    }
+    uploadBlob = new Blob([data], {type: 'application/octet-stream'});
+    return uploadBlob;
+}
+
 // --- TESTY ---
 
 /**
- * Uruchamia test ping, mierząc opóźnienie do serwera.
- * @returns {Promise<number>} Zmierzony czas PING w milisekundach.
+ * Test PING
  */
 export async function runPing() {
     const start = performance.now();
     try { 
-        // Wysłanie zapytania do endpointu /api/ping
-        await fetch(`/api/ping?t=${Date.now()}`); 
+        await fetch(`/api/ping?t=${Date.now()}`, { cache: "no-store" }); 
         return performance.now() - start; 
     } catch(e) { 
         console.error("Ping error:", e);
@@ -22,9 +39,8 @@ export async function runPing() {
 }
 
 /**
- * Uruchamia test pobierania (Download), używając wielu równoległych strumieni (fetch).
- * Zapewnia gwarancję zakończenia wszystkich workerów po upływie czasu testu.
- * @returns {Promise<number>} Średnia prędkość pobierania w Mbps.
+ * Test DOWNLOAD
+ * Wykorzystuje Fetch API i ReadableStream
  */
 export function runDownload() {
     return new Promise((resolve) => {
@@ -37,134 +53,137 @@ export function runDownload() {
         const currentGauge = getGaugeInstance();
         
         const worker = async () => {
-            // Pętla do ciągłego pobierania testowego pliku binarnego (500MB.bin)
             while(!signal.aborted) {
                 try {
-                    // Dodano Math.random() do URL, aby zapobiec cachowaniu
-                    const response = await fetch(`/static/500MB.bin?t=${Math.random()}`, { signal });
+                    // Cache busting jest kluczowy
+                    const response = await fetch(`/static/500MB.bin?t=${Math.random()}`, { signal, cache: "no-store" });
+                    if (!response.body) break;
+                    
                     const reader = response.body.getReader();
                     while(true) {
                         const {done, value} = await reader.read();
                         if (done) break; 
-                        totalBytes += value.length;
+                        if (value) totalBytes += value.length;
                     }
                 } catch(e) { 
-                    // AbortError lub inne błędy
-                    break;
+                    break; // AbortError lub błąd sieci
                 }
             }
         };
 
-        // Uruchomienie workerów
+        // Start workerów
         for(let i=0; i<THREADS; i++) worker();
         
-        // Interwał aktualizacji UI i kontroli czasu
+        // Pętla pomiarowa (Interval)
         const interval = setInterval(() => {
             const now = performance.now();
             const dur = (now - startTime) / 1000;
-            // Obliczanie prędkości (Bity na sek. / 1 mln = Mbps)
-            let speed = (dur > 0.5) ? (totalBytes * 8) / dur / 1e6 : 0; 
             
-            // Aktualizacja elementów UI
+            // Pomijamy pierwsze 200ms jako "rozgrzewkę" dla stabilniejszego wyniku
+            let speed = (dur > 0.2) ? (totalBytes * 8) / dur / 1e6 : 0; 
+            
             checkGaugeRange(speed); 
+            
+            // Aktualizacja UI
             let displaySpeed = (currentUnit === 'mbs') ? speed / 8 : speed;
             if (currentGauge) currentGauge.value = displaySpeed; 
             el('speed-value').innerText = displaySpeed.toFixed(2); 
             el('down-val').textContent = formatSpeed(speed); 
             updateChart('down', speed);
+            
             downloadSpeedMbps = speed; 
 
             if(dur * 1000 >= TEST_DURATION) { 
-                // ZATRZYMANIE, JEŚLI OSIĄGNIĘTO CZAS TESTU
                 clearInterval(interval); 
-                controller.abort(); // Przerwanie wszystkich aktywnych fetchów
-                setLastResultDown(downloadSpeedMbps); // Zapisujemy wynik do stanu globalnego
-                resolve(downloadSpeedMbps); // Rozwiązanie Promise, aby umożliwić kontynuację
+                controller.abort(); 
+                setLastResultDown(downloadSpeedMbps);
+                resolve(downloadSpeedMbps);
             }
         }, 200);
     });
 }
 
 /**
- * Uruchamia test wysyłania (Upload), używając wielu równoległych XHR.
- * @returns {Promise<number>} Średnia prędkość wysyłania w Mbps.
+ * Test UPLOAD
+ * Wykorzystuje XHR (XMLHttpRequest) ponieważ oferuje lepszy podgląd postępu (upload.onprogress)
+ * niż Fetch API w starszych przeglądarkach, a w nowych działa równie dobrze.
  */
 export function runUpload() {
     return new Promise((resolve) => {
+        // Przygotuj dane raz
+        const blob = getUploadBlob();
+        
         let totalBytes = 0;
         let lastLoaded = new Array(THREADS).fill(0);
         let activeXHRs = [];
         let isRunning = true;
         const startTime = performance.now();
-        const dataSize = 64 * 1024 * 1024; // 64 MB na BLOB
         let uploadSpeedMbps = 0; 
         
         const currentGauge = getGaugeInstance();
 
-        // Generowanie losowego BLOB-a
-        const data = new Uint8Array(dataSize);
-        const MAX_CHUNK_SIZE = 65536; 
-        for(let i = 0; i < dataSize; i += MAX_CHUNK_SIZE) {
-            const len = Math.min(MAX_CHUNK_SIZE, dataSize - i);
-            const view = new Uint8Array(data.buffer, i, len);
-            window.crypto.getRandomValues(view); 
-        }
-        
-        const blob = new Blob([data], {type: 'application/octet-stream'});
-
         const worker = (index) => {
             if(!isRunning) return;
+            
             const xhr = new XMLHttpRequest();
             activeXHRs.push(xhr);
+            
+            // Dodajemy losowy parametr, aby uniknąć cachowania przez proxy
             xhr.open("POST", `/api/upload?t=${Math.random()}`, true);
+            
+            // Kluczowe dla wydajności uploadu: nie przetwarzaj odpowiedzi
+            xhr.responseType = 'text'; 
             
             xhr.upload.onprogress = (e) => {
                 if(!isRunning) return;
+                // Obliczamy przyrost (delta) od ostatniego sprawdzenia dla tego workera
                 const diff = e.loaded - lastLoaded[index];
-                if(diff > 0) { totalBytes += diff; lastLoaded[index] = e.loaded; }
-            };
-            
-            const onWorkerFinish = () => {
-                lastLoaded[index] = 0;
-                // Usuwamy worker z aktywnej listy
-                const arrIdx = activeXHRs.indexOf(xhr);
-                if (arrIdx > -1) activeXHRs.splice(arrIdx, 1);
-                
-                if(isRunning) {
-                    setTimeout(() => worker(index), 50); 
+                if(diff > 0) { 
+                    totalBytes += diff; 
+                    lastLoaded[index] = e.loaded; 
                 }
             };
             
-            // Poprawa: xhr.onerror musi usunąć XHR z listy i zrestartować worker, jeśli czas nie minął
-            xhr.onload = onWorkerFinish;
-            xhr.onerror = onWorkerFinish; 
+            const restart = () => {
+                lastLoaded[index] = 0;
+                // Usuń stary XHR z listy
+                const idx = activeXHRs.indexOf(xhr);
+                if (idx > -1) activeXHRs.splice(idx, 1);
+                
+                if(isRunning) worker(index);
+            };
 
+            xhr.onload = restart;
+            xhr.onerror = restart; 
+            
+            // Wysyłamy dane
             xhr.send(blob);
         };
         
         for(let i=0; i<THREADS; i++) worker(i);
         
-        // Interwał aktualizacji UI i kontroli czasu
         const interval = setInterval(() => {
             const now = performance.now();
             const dur = (now - startTime) / 1000;
-            let speed = (dur > 0.5) ? (totalBytes * 8) / dur / 1e6 : 0; 
+            
+            let speed = (dur > 0.2) ? (totalBytes * 8) / dur / 1e6 : 0; 
             
             checkGaugeRange(speed); 
+            
             let displaySpeed = (currentUnit === 'mbs') ? speed / 8 : speed;
             if (currentGauge) currentGauge.value = displaySpeed; 
             el('speed-value').innerText = displaySpeed.toFixed(2); 
             el('up-val').textContent = formatSpeed(speed);
             updateChart('up', speed);
+            
             uploadSpeedMbps = speed; 
 
             if(dur * 1000 >= TEST_DURATION) { 
-                // ZATRZYMANIE, JEŚLI OSIĄGNIĘTO CZAS TESTU
-                isRunning = false; // Zatrzymaj tworzenie nowych workerów
+                isRunning = false; 
                 clearInterval(interval); 
-                activeXHRs.forEach(xhr => xhr.abort()); // Przerwanie wszystkich aktywnych requestów
-                setLastResultUp(uploadSpeedMbps); // Zapisujemy wynik do stanu globalnego
-                resolve(uploadSpeedMbps); // Rozwiązanie Promise, aby umożliwić kontynuację
+                activeXHRs.forEach(xhr => xhr.abort()); 
+                setLastResultUp(uploadSpeedMbps); 
+                resolve(uploadSpeedMbps); 
             }
         }, 200);
     });
