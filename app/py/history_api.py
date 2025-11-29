@@ -2,11 +2,14 @@
 
 import datetime
 import logging
-from fastapi import APIRouter, Request, Depends
-from fastapi.responses import JSONResponse
+import csv
+import io
+from typing import List
+from fastapi import APIRouter, Request, Depends, Body
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, asc
-from .database import get_db, SpeedResult # Zmieniono na poprawny import względny
+from .database import get_db, SpeedResult
 
 logger = logging.getLogger("LocalSpeedHistoryAPI")
 router = APIRouter()
@@ -73,4 +76,53 @@ async def save_result(request: Request, db: Session = Depends(get_db)):
         return {"status": "saved"}
     except Exception as e:
         logger.error(f"Błąd zapisu historii: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@router.delete("/api/history")
+async def delete_results(ids: List[int] = Body(...), db: Session = Depends(get_db)):
+    """Usuwa wybrane wyniki z bazy danych."""
+    try:
+        if not ids:
+            return {"status": "no_ids_provided"}
+            
+        # Usuwanie rekordów, których ID znajduje się na liście
+        db.query(SpeedResult).filter(SpeedResult.id.in_(ids)).delete(synchronize_session=False)
+        db.commit()
+        return {"status": "deleted", "count": len(ids)}
+    except Exception as e:
+        logger.error(f"Błąd usuwania historii: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@router.get("/api/history/export")
+def export_history_csv(db: Session = Depends(get_db)):
+    """Generuje i zwraca plik CSV z całą historią."""
+    try:
+        # Pobieramy wszystkie dane, sortując od najnowszych
+        results = db.query(SpeedResult).order_by(desc(SpeedResult.date)).all()
+        
+        # Tworzymy strumień w pamięci
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Nagłówki
+        writer.writerow(['ID', 'Date', 'Ping (ms)', 'Download (Mbps)', 'Upload (Mbps)'])
+        
+        # Dane
+        for row in results:
+            writer.writerow([
+                row.id, 
+                row.date, 
+                f"{row.ping:.2f}", 
+                f"{row.download:.2f}", 
+                f"{row.upload:.2f}"
+            ])
+            
+        output.seek(0)
+        
+        response = StreamingResponse(iter([output.getvalue()]), media_type="text/csv")
+        response.headers["Content-Disposition"] = "attachment; filename=localspeed_history.csv"
+        return response
+        
+    except Exception as e:
+        logger.error(f"Błąd eksportu CSV: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})

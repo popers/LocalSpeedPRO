@@ -9,7 +9,72 @@
     display: flex;
     flex-direction: column;
 }
-h3 { margin-top: 0; margin-bottom: 1rem; font-size: 1.1rem; opacity: 0.8; }
+
+/* Header Historii z przyciskami */
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+h3 { margin: 0; font-size: 1.2rem; opacity: 0.8; }
+
+.history-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* STYLE PRZYCISKÓW */
+.btn-csv {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+.btn-csv:hover {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+.btn-csv .material-icons { font-size: 18px; }
+
+.btn-danger {
+    background: #ff5252;
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: background 0.2s, transform 0.1s;
+    box-shadow: 0 2px 5px rgba(255, 82, 82, 0.3);
+}
+.btn-danger:hover {
+    background: #ff1744;
+}
+.btn-danger:active {
+    transform: translateY(1px);
+}
+.btn-danger .material-icons { font-size: 18px; }
+.btn-danger.hidden {
+    display: none;
+}
 
 /* TABELA I SORTOWANIE */
 .table-wrapper { 
@@ -17,7 +82,7 @@ h3 { margin-top: 0; margin-bottom: 1rem; font-size: 1.1rem; opacity: 0.8; }
     overflow-x: auto; 
     margin-bottom: 1rem;
 }
-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 400px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 450px; }
 th { 
     text-align: left; 
     padding: 10px; 
@@ -31,6 +96,21 @@ th {
 
 th:hover {
     background: rgba(128,128,128, 0.05);
+}
+
+th.checkbox-col, td.checkbox-col {
+    width: 40px;
+    text-align: center;
+    cursor: default;
+}
+th.checkbox-col:hover { background: transparent; }
+
+/* CHECKBOX STYLING */
+input[type="checkbox"] {
+    accent-color: var(--primary);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
 }
 
 th .sort-icon {
@@ -49,6 +129,9 @@ th.sort-asc .sort-icon::after { content: "expand_less"; }
 
 td { padding: 10px; border-bottom: 1px solid var(--border); }
 tr:last-child td { border-bottom: none; }
+tr.selected {
+    background-color: rgba(98, 0, 234, 0.05);
+}
 
 /* PAGINACJA */
 .pagination-controls {
@@ -86,3 +169,55 @@ tr:last-child td { border-bottom: none; }
     font-size: 0.9rem;
     font-weight: 500;
 }
+
+/* MODAL STYLES */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 3000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(2px);
+    opacity: 1;
+    transition: opacity 0.3s;
+}
+.modal-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.modal-content {
+    background: var(--surface);
+    padding: 1.5rem;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    transform: translateY(0);
+    transition: transform 0.3s;
+}
+.modal-overlay.hidden .modal-content {
+    transform: translateY(20px);
+}
+
+.modal-content h4 { margin: 0 0 10px 0; font-size: 1.2rem; color: var(--text); }
+.modal-content p { color: var(--text); opacity: 0.8; margin-bottom: 20px; }
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn-text {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    padding: 8px 16px;
+    cursor: pointer;
+    font-weight: 500;
+    border-radius: 4px;
+}
+.btn-text:hover { background: rgba(128,128,128,0.1); }

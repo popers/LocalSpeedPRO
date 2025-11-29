@@ -68,9 +68,7 @@ export async function saveResult(ping, down, up) {
         
         if (res.ok) {
             // PO Pomyślnym ZAPISIE, AUTOMATYCZNIE PRZECHODZIMY DO PIERWSZEJ STRONY HISTORII I ODŚWIEŻAMY
-            // Używamy setTimeout, aby dać bazie czas na zapis
             setTimeout(() => {
-                // loadHistory(page, sort_by, order)
                 loadHistory(1, 'date', 'desc'); 
                 log(translations[lang].log_end + " Wynik zapisany.");
             }, 500); 
@@ -92,5 +90,26 @@ export async function fetchHistory(page, limit, sortBy, order) {
     } catch(e) { 
         console.error("History fetch error", e); 
         return { total: 0, page: 1, limit: limit, data: [] };
+    }
+}
+
+// --- Usuwanie elementów (NOWE) ---
+export async function deleteItems(ids) {
+    try {
+        const res = await fetch('/api/history', {
+            method: 'DELETE',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(ids)
+        });
+        
+        if (res.ok) {
+            return true;
+        } else {
+            throw new Error("Delete failed");
+        }
+    } catch(e) {
+        console.error("Delete error", e);
+        log(translations[lang].err + "Nie udało się usunąć wpisów.");
+        return false;
     }
 }

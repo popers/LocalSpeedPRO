@@ -92,15 +92,32 @@
 
         <div class="bottom-section">
             <div class="history-container">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="history-header">
                     <h3 data-key="history_title">Historia Pomiarów</h3>
-                    <!-- Opcjonalne miejsce na eksport CSV w przyszłości -->
+                    
+                    <div class="history-actions">
+                        <!-- Przycisk Usuwania (Domyslnie ukryty) -->
+                        <button id="delete-selected-btn" class="btn-danger hidden">
+                            <span class="material-icons">delete</span>
+                            <span data-key="btn_delete">Usuń zaznaczone</span>
+                            <span id="selected-count">(0)</span>
+                        </button>
+                        
+                        <!-- Przycisk Eksportu CSV -->
+                        <button id="export-csv-btn" class="btn-csv" title="Eksportuj do CSV">
+                            <span class="material-icons">file_download</span>
+                            <span data-key="btn_csv">Eksport CSV</span>
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="table-wrapper">
                     <table id="history-table">
                         <thead>
                             <tr>
+                                <th class="checkbox-col">
+                                    <input type="checkbox" id="select-all-checkbox">
+                                </th>
                                 <th class="sortable" data-sort="date">
                                     <span data-key="table_date">Data</span> 
                                     <span class="sort-icon material-icons">unfold_more</span>
@@ -146,6 +163,18 @@
             </div>
         </div>
     </main>
+
+    <!-- Modal Potwierdzenia -->
+    <div id="delete-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h4 data-key="modal_delete_title">Potwierdzenie</h4>
+            <p data-key="modal_delete_msg">Czy na pewno chcesz usunąć zaznaczone wpisy?</p>
+            <div class="modal-actions">
+                <button id="modal-cancel-btn" class="btn-text" data-key="modal_cancel">Anuluj</button>
+                <button id="modal-confirm-btn" class="btn-danger" data-key="modal_confirm">Usuń</button>
+            </div>
+        </div>
+    </div>
 
     <div id="toast-container"></div>
 

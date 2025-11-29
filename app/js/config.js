@@ -14,6 +14,14 @@ export const translations = {
         table_down: "Pobieranie",
         table_up: "Wysyłanie",
         rows_label: "Na stronę:",
+        
+        btn_delete: "Usuń zaznaczone",
+        btn_csv: "Eksport CSV",
+        modal_delete_title: "Potwierdzenie",
+        modal_delete_msg: "Czy na pewno chcesz usunąć zaznaczone wpisy?",
+        modal_cancel: "Anuluj",
+        modal_confirm: "Usuń",
+        msg_deleted: "Usunięto wybrane wpisy.",
 
         gauge_title: "PRĘDKOŚĆ",
 
@@ -41,6 +49,14 @@ export const translations = {
         table_down: "Download",
         table_up: "Upload",
         rows_label: "Per page:",
+
+        btn_delete: "Delete Selected",
+        btn_csv: "Export CSV",
+        modal_delete_title: "Confirmation",
+        modal_delete_msg: "Are you sure you want to delete selected items?",
+        modal_cancel: "Cancel",
+        modal_confirm: "Delete",
+        msg_deleted: "Selected items deleted.",
 
         gauge_title: "SPEED",
 
