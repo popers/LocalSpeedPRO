@@ -1,4 +1,4 @@
-import { el, formatSpeed, getUnitLabel, log, lang } from './utils.js';
+import { el, formatSpeed, getUnitLabel, log, lang, currentUnit } from './utils.js';
 import { fetchHistory, deleteItems } from './data_sync.js';
 import { translations } from './config.js';
 
@@ -230,7 +230,16 @@ export function initHistoryEvents() {
 
     // Przycisk "Eksport CSV"
     el('export-csv-btn').onclick = () => {
-        window.location.href = '/api/history/export';
+        const t = translations[lang];
+        // Budujemy URL z parametrami
+        const params = new URLSearchParams({
+            unit: currentUnit,
+            h_date: t.table_date,  // "Data" lub "Date"
+            h_ping: t.table_ping,  // "Ping" (dodano tłumaczenie)
+            h_down: t.table_down,  // "Pobieranie" lub "Download"
+            h_up: t.table_up       // "Wysyłanie" lub "Upload"
+        });
+        window.location.href = `/api/history/export?${params.toString()}`;
     };
 
     // Obsługa Modala

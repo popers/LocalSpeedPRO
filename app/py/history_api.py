@@ -94,8 +94,20 @@ async def delete_results(ids: List[int] = Body(...), db: Session = Depends(get_d
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @router.get("/api/history/export")
-def export_history_csv(db: Session = Depends(get_db)):
-    """Generuje i zwraca plik CSV z całą historią."""
+def export_history_csv(
+    unit: str = 'mbps', 
+    h_date: str = 'Date', 
+    h_ping: str = 'Ping',
+    h_down: str = 'Download', 
+    h_up: str = 'Upload', 
+    db: Session = Depends(get_db)
+):
+    """
+    Generuje i zwraca plik CSV z całą historią.
+    Parametr unit='mbs' konwertuje wartości na MB/s.
+    Parametry h_* pozwalają na tłumaczenie nagłówków kolumn.
+    Nazwa pliku zawiera teraz znacznik czasu.
+    """
     try:
         # Pobieramy wszystkie dane, sortując od najnowszych
         results = db.query(SpeedResult).order_by(desc(SpeedResult.date)).all()
@@ -104,23 +116,33 @@ def export_history_csv(db: Session = Depends(get_db)):
         output = io.StringIO()
         writer = csv.writer(output)
         
-        # Nagłówki
-        writer.writerow(['ID', 'Date', 'Ping (ms)', 'Download (Mbps)', 'Upload (Mbps)'])
+        is_mbs = (unit == 'mbs')
+        unit_label = 'MB/s' if is_mbs else 'Mbps'
+        
+        # Nagłówki z uwzględnieniem jednostki i języka.
+        writer.writerow([h_date, f'{h_ping} (ms)', f'{h_down} ({unit_label})', f'{h_up} ({unit_label})'])
         
         # Dane
         for row in results:
+            # Konwersja jeśli potrzebna (baza trzyma dane w Mbps)
+            down_val = row.download / 8.0 if is_mbs else row.download
+            up_val = row.upload / 8.0 if is_mbs else row.upload
+            
             writer.writerow([
-                row.id, 
                 row.date, 
                 f"{row.ping:.2f}", 
-                f"{row.download:.2f}", 
-                f"{row.upload:.2f}"
+                f"{down_val:.2f}", 
+                f"{up_val:.2f}"
             ])
             
         output.seek(0)
         
+        # Generowanie nazwy pliku z datą i godziną (np. localspeed_history_2023-11-29_14-30-00.csv)
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"localspeed_history_{timestamp}.csv"
+        
         response = StreamingResponse(iter([output.getvalue()]), media_type="text/csv")
-        response.headers["Content-Disposition"] = "attachment; filename=localspeed_history.csv"
+        response.headers["Content-Disposition"] = f"attachment; filename={filename}"
         return response
         
     except Exception as e:

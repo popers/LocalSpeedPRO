@@ -86,6 +86,7 @@
         left: auto;
     }
 
+    /* POPRAWKA DLA TABELI NA MOBILE */
     table {
         min-width: 0; 
         font-size: 0.75rem; 
@@ -94,15 +95,26 @@
         padding: 8px 3px; 
         word-break: break-word; 
     }
-    td:first-child {
+    
+    /* 1. Kolumna Checkboxów - Wąska */
+    th.checkbox-col, td.checkbox-col {
+        width: 30px !important;
+        min-width: 30px !important;
+        padding: 0 5px !important;
+    }
+
+    /* 2. Kolumna Data - Wcześniej była first-child, teraz jest druga */
+    td:nth-child(2) {
         width: 25%;
         font-size: 0.7rem;
         line-height: 1.2;
     }
     
+    /* Paginacja w jednej linii na mobile */
     .pagination-controls {
-        justify-content: center;
-        flex-direction: column;
+        justify-content: space-between;
+        flex-direction: row;
+        gap: 5px;
     }
     
     .unit-switch {
