@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalSpeed Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Biblioteka Chart.js do wykresów w tle -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Biblioteka Gauge (Zegar) -->
+    <script src="https://unpkg.com/canvas-gauges@2.1.7/gauge.min.js"></script>
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            <span class="material-icons">speed</span>
+            LocalSpeed
+        </div>
+        <div class="controls">
+            <button id="lang-toggle" class="btn-icon"><span>EN</span></button>
+            <button id="theme-toggle" class="btn-icon"><span class="material-icons" id="theme-icon">dark_mode</span></button>
+        </div>
+    </header>
+
+    <main>
+        <div class="dashboard-container">
+            
+            <div class="gauge-section">
+                <!-- Analogowy Zegar -->
+                <canvas id="speed-gauge"></canvas>
+                
+                <!-- Licznik pod zegarem -->
+                <div class="digital-box">
+                    <span id="speed-value">0.00</span>
+                </div>
+
+                <div class="ping-display">
+                    <span class="material-icons">network_check</span>
+                    <span id="ping-text">--</span> ms
+                </div>
+                
+                <!-- USUNIĘTO: status-text "Gotowy" -->
+                
+                <button id="unit-toggle" class="unit-switch" title="Przełącz jednostkę">Mbps</button>
+            </div>
+
+            <div class="stats-section">
+                
+                <div class="stat-card" id="card-down">
+                    <canvas id="chart-down" class="bg-chart"></canvas>
+                    <div class="stat-content-wrapper">
+                        <div class="stat-icon"><span class="material-icons">download</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label" data-key="down">Pobieranie</div>
+                            <div class="stat-value">
+                                <span id="down-val">--</span> 
+                                <small class="unit-label">Mbps</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card" id="card-up">
+                    <canvas id="chart-up" class="bg-chart"></canvas>
+                    <div class="stat-content-wrapper">
+                        <div class="stat-icon"><span class="material-icons">upload</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label" data-key="up">Wysyłanie</div>
+                            <div class="stat-value">
+                                <span id="up-val">--</span> 
+                                <small class="unit-label">Mbps</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-area">
+                    <button id="start-btn" class="btn-primary" data-key="start">START</button>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="bottom-section">
+            <div class="history-container">
+                <h3 data-key="history_title">Historia Pomiarów</h3>
+                
+                <div class="table-wrapper">
+                    <table id="history-table">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-sort="date">
+                                    <span data-key="table_date">Data</span> 
+                                    <span class="sort-icon material-icons">unfold_more</span>
+                                </th>
+                                <th class="sortable" data-sort="ping">
+                                    <span data-key="table_ping">Ping</span>
+                                    <span class="sort-icon material-icons">unfold_more</span>
+                                </th>
+                                <th class="sortable" data-sort="download">
+                                    <span data-key="table_down">Download</span>
+                                    <span class="sort-icon material-icons">unfold_more</span>
+                                </th>
+                                <th class="sortable" data-sort="upload">
+                                    <span data-key="table_up">Upload</span>
+                                    <span class="sort-icon material-icons">unfold_more</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- JS wypełni to -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination-controls">
+                    <div class="rows-selector">
+                        <span data-key="rows_label">Na stronę:</span>
+                        <select id="rows-per-page">
+                            <option value="5">5</option>
+                            <option value="10" selected>10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                        </select>
+                    </div>
+                    
+                    <div class="page-nav">
+                        <button id="prev-page" class="btn-icon small"><span class="material-icons">chevron_left</span></button>
+                        <span id="page-info">1 / 1</span>
+                        <button id="next-page" class="btn-icon small"><span class="material-icons">chevron_right</span></button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <div id="toast-container"></div>
+
+    <script src="main.js"></script>
+</body>
+</html>

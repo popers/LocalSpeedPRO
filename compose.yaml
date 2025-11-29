@@ -1,0 +1,12 @@
+services:
+  localspeed:
+    build: .
+    container_name: localspeed_app
+    ports:
+      - "8002:80"   # Strona WWW
+      - "5202:5201" # Port dla klienta iperf3
+    restart: unless-stopped
+    environment:
+      - MAX_WORKERS=8
+    volumes:
+      - ./app:/app
