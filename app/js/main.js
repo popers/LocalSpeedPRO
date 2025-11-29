@@ -155,7 +155,20 @@ window.onload = () => {
         else log(translations[lang].msg_unit_mbs);
     };
 
-    // Zmiana rozmiaru okna
+    // Zmiana rozmiaru okna - NAPRAWIONY PROBLEM SCROLLA NA MOBILE
     let resizeTimeout;
-    window.onresize = () => { clearTimeout(resizeTimeout); resizeTimeout = setTimeout(reloadGauge, 200); };
+    let lastWidth = window.innerWidth; // Zapamiętujemy szerokość startową
+
+    window.onresize = () => { 
+        const currentWidth = window.innerWidth;
+        
+        // Ignoruj zdarzenie resize, jeśli szerokość się nie zmieniła.
+        // Na mobile chowanie paska adresu zmienia tylko wysokość.
+        if (currentWidth === lastWidth) return;
+
+        lastWidth = currentWidth;
+        
+        clearTimeout(resizeTimeout); 
+        resizeTimeout = setTimeout(reloadGauge, 200); 
+    };
 };

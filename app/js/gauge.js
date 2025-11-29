@@ -93,6 +93,12 @@ export function initGauge() {
 }
 
 export function reloadGauge() {
+    // ZAPAMIĘTANIE WARTOŚCI: Jeśli test trwa (wartość > 0), zapamiętaj ją
+    let savedValue = 0;
+    if (gauge) {
+        savedValue = gauge.value;
+    }
+
     const old = el('speed-gauge');
     if(old) old.remove(); 
     
@@ -103,6 +109,12 @@ export function reloadGauge() {
     gauge = null; 
     gaugeScaled = false; 
     initGauge();
+
+    // PRZYWRÓCENIE WARTOŚCI: Jeśli była jakaś wartość, ustaw ją z powrotem i sprawdź skalę
+    if (savedValue > 0 && gauge) {
+        checkGaugeRange(savedValue); // Upewnij się, że skala jest odpowiednia dla starej wartości
+        gauge.value = savedValue;
+    }
 }
 
 // --- SKALOWANIE GAUGE DLA WYSOKICH PRĘDKOŚCI ---
