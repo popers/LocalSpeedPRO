@@ -60,14 +60,24 @@ export async function saveSettings(newLang, newTheme, newUnit) {
 export async function saveResult(ping, down, up) {
     try {
         const currentTheme = document.body.getAttribute('data-theme') || 'dark';
-        await fetch('/api/history', {
+        const res = await fetch('/api/history', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ ping, download: down, upload: up, lang, theme: currentTheme })
         });
         
-        // Po zapisie, automatycznie przechodzimy do pierwszej strony historii i odświeżamy
-        loadHistory(1, 'date', 'desc'); 
+        if (res.ok) {
+            // PO Pomyślnym ZAPISIE, AUTOMATYCZNIE PRZECHODZIMY DO PIERWSZEJ STRONY HISTORII I ODŚWIEŻAMY
+            // Używamy setTimeout, aby dać bazie czas na zapis
+            setTimeout(() => {
+                // loadHistory(page, sort_by, order)
+                loadHistory(1, 'date', 'desc'); 
+                log(translations[lang].log_end + " Wynik zapisany.");
+            }, 500); 
+        } else {
+            const errorData = await res.json();
+            throw new Error(errorData.error || "Nieznany błąd zapisu");
+        }
     } catch(e) { 
         console.error("History save error", e); 
         log(translations[lang].err + "Nie udało się zapisać wyniku testu.");

@@ -8,6 +8,7 @@ services:
     # Zwiększamy ilość workerów uvicorn, aby obsłużyć równoległe żądania
     environment:
       - WEB_CONCURRENCY=8
+      - TZ=Europe/Amsterdam
     volumes:
       - ./app:/app
 networks: {}

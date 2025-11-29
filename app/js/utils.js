@@ -14,6 +14,7 @@ export function setLang(newLang) {
 export function setCurrentUnit(newUnit) {
     currentUnit = newUnit;
 }
+// FUNKCJE AKTUALIZUJĄCE WYNIKI
 export function setLastResultDown(val) {
     lastResultDown = val;
 }
@@ -29,6 +30,13 @@ export function formatSpeed(valMbps) {
 
 export function getUnitLabel() {
     return currentUnit === 'mbs' ? 'MB/s' : 'Mbps';
+}
+
+// NOWA FUNKCJA: Zapewnia timeout (używana w Promise.race w main.js)
+export function timeout(ms) {
+    return new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Test Timeout')), ms);
+    });
 }
 
 // --- POWIADOMIENIA (TOAST) ---

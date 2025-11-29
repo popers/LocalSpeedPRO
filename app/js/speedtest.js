@@ -1,4 +1,4 @@
-import { el, formatSpeed, currentUnit, setLastResultDown, setLastResultUp, lastResultDown, lastResultUp } from '/js/utils.js';
+import { el, formatSpeed, currentUnit, setLastResultDown, setLastResultUp } from '/js/utils.js';
 import { THREADS, TEST_DURATION } from '/js/config.js';
 import { checkGaugeRange, getGaugeInstance } from '/js/gauge.js';
 import { updateChart } from '/js/charts.js';
@@ -36,11 +36,7 @@ export function runDownload() {
         
         const currentGauge = getGaugeInstance();
         
-        let activeWorkers = 0; 
-
         const worker = async () => {
-            activeWorkers++; 
-            
             // Pętla do ciągłego pobierania testowego pliku binarnego (500MB.bin)
             while(!signal.aborted) {
                 try {
@@ -53,17 +49,10 @@ export function runDownload() {
                         totalBytes += value.length;
                     }
                 } catch(e) { 
-                    // Przerwanie (AbortError) jest oczekiwane po zakończeniu testu
-                    if(e.name === 'AbortError') break; 
-                    
-                    // W przypadku innych błędów, przerywamy worker
-                    if(e.name !== 'TypeError' && e.message !== 'Failed to fetch') {
-                        console.error("Download worker error:", e);
-                        break;
-                    }
+                    // AbortError lub inne błędy
+                    break;
                 }
             }
-            activeWorkers--; 
         };
 
         // Uruchomienie workerów
@@ -81,26 +70,16 @@ export function runDownload() {
             let displaySpeed = (currentUnit === 'mbs') ? speed / 8 : speed;
             if (currentGauge) currentGauge.value = displaySpeed; 
             el('speed-value').innerText = displaySpeed.toFixed(2); 
-            el('down-val').textContent = formatSpeed(speed); // Używamy formatSpeed z utils.js
+            el('down-val').textContent = formatSpeed(speed); 
             updateChart('down', speed);
             downloadSpeedMbps = speed; 
 
-            if(dur > TEST_DURATION/1000) { 
-                // KROK 1: ZATRZYMUJEMY INTERWAŁ
+            if(dur * 1000 >= TEST_DURATION) { 
+                // ZATRZYMANIE, JEŚLI OSIĄGNIĘTO CZAS TESTU
                 clearInterval(interval); 
-                
-                // KROK 2: ABORTUJEMY WSZYSTKIE AKTYWNE POBIERANIA
-                controller.abort(); 
-                
-                // KROK 3: OCZEKUJEMY NA ZAKOŃCZENIE WSZYSTKICH WORKERÓW
-                const waitForWorkers = setInterval(() => {
-                    if (activeWorkers <= 0) {
-                        clearInterval(waitForWorkers);
-                        setLastResultDown(downloadSpeedMbps);
-                        // Zwracamy ostateczny wynik
-                        resolve(downloadSpeedMbps);
-                    }
-                }, 50); 
+                controller.abort(); // Przerwanie wszystkich aktywnych fetchów
+                setLastResultDown(downloadSpeedMbps); // Zapisujemy wynik do stanu globalnego
+                resolve(downloadSpeedMbps); // Rozwiązanie Promise, aby umożliwić kontynuację
             }
         }, 200);
     });
@@ -122,11 +101,9 @@ export function runUpload() {
         
         const currentGauge = getGaugeInstance();
 
-        // Generowanie losowego BLOB-a (POPRAWKA: Iteracyjne generowanie)
+        // Generowanie losowego BLOB-a
         const data = new Uint8Array(dataSize);
-        const MAX_CHUNK_SIZE = 65536; // Limit dla window.crypto.getRandomValues()
-        
-        // Iteracyjne generowanie danych w małych kawałkach
+        const MAX_CHUNK_SIZE = 65536; 
         for(let i = 0; i < dataSize; i += MAX_CHUNK_SIZE) {
             const len = Math.min(MAX_CHUNK_SIZE, dataSize - i);
             const view = new Uint8Array(data.buffer, i, len);
@@ -158,6 +135,7 @@ export function runUpload() {
                 }
             };
             
+            // Poprawa: xhr.onerror musi usunąć XHR z listy i zrestartować worker, jeśli czas nie minął
             xhr.onload = onWorkerFinish;
             xhr.onerror = onWorkerFinish; 
 
@@ -180,24 +158,13 @@ export function runUpload() {
             updateChart('up', speed);
             uploadSpeedMbps = speed; 
 
-            if(dur > TEST_DURATION/1000) { 
-                // KROK 1: ZATRZYMUJEMY TEST
-                isRunning = false; 
+            if(dur * 1000 >= TEST_DURATION) { 
+                // ZATRZYMANIE, JEŚLI OSIĄGNIĘTO CZAS TESTU
+                isRunning = false; // Zatrzymaj tworzenie nowych workerów
                 clearInterval(interval); 
-                
-                // KROK 2: ABORTUJEMY WSZYSTKIE AKTYWNE REQUESTY
-                // Należy to zrobić, zanim workerzy naturalnie się skończą, aby przyspieszyć proces
-                activeXHRs.forEach(xhr => xhr.abort()); 
-                
-                // KROK 3: OCZEKUJEMY NA ZAKOŃCZENIE WSZYSTKICH XHR
-                const waitForWorkers = setInterval(() => {
-                    if (activeXHRs.length === 0) {
-                        clearInterval(waitForWorkers);
-                        setLastResultUp(uploadSpeedMbps);
-                        // Zwracamy ostateczny wynik
-                        resolve(uploadSpeedMbps);
-                    }
-                }, 50); 
+                activeXHRs.forEach(xhr => xhr.abort()); // Przerwanie wszystkich aktywnych requestów
+                setLastResultUp(uploadSpeedMbps); // Zapisujemy wynik do stanu globalnego
+                resolve(uploadSpeedMbps); // Rozwiązanie Promise, aby umożliwić kontynuację
             }
         }, 200);
     });
