@@ -3,10 +3,11 @@ services:
     build: .
     container_name: localspeed_app
     ports:
-      - "8002:80"   # Strona WWW
-      - "5202:5201" # Port dla klienta iperf3
+      - 8002:80
     restart: unless-stopped
+    # Zwiększamy ilość workerów uvicorn, aby obsłużyć równoległe żądania
     environment:
-      - MAX_WORKERS=8
+      - WEB_CONCURRENCY=8
     volumes:
       - ./app:/app
+networks: {}

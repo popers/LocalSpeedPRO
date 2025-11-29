@@ -6,8 +6,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Tworzymy katalog na pliki statyczne
-RUN mkdir -p /app/static
+# Tworzymy katalogi na pliki statyczne i kod modularny
+RUN mkdir -p /app/static /app/js /app/css /app/py
 
 # GENIUSZ W PROSTOCIE:
 # Generujemy prawdziwe pliki losowe (szum) podczas budowania obrazu.
@@ -17,8 +17,10 @@ RUN dd if=/dev/urandom of=/app/static/10MB.bin bs=1M count=10 status=none
 RUN dd if=/dev/urandom of=/app/static/20MB.bin bs=1M count=20 status=none
 RUN dd if=/dev/urandom of=/app/static/50MB.bin bs=1M count=50 status=none
 
-# Kopiujemy kod aplikacji
+# Kopiujemy kod aplikacji (nowa modularna struktura: pliki .html, /js, /css, /py)
+# Kopiujemy całą zawartość głównego katalogu 'app'
 COPY ./app /app
 
 # Uruchamiamy serwer
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
+# Zmieniamy odwołanie z 'main:app' na 'py.main:app'
+CMD ["uvicorn", "py.main:app", "--host", "0.0.0.0", "--port", "80"]

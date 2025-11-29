@@ -6,7 +6,16 @@
     <title>LocalSpeed Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    
+    <!-- NOWE: Załadowanie podzielonych plików CSS (Używamy /css/) -->
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/header.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="stylesheet" href="/css/gauge.css">
+    <link rel="stylesheet" href="/css/stats.css">
+    <link rel="stylesheet" href="/css/history.css">
+    <link rel="stylesheet" href="/css/toast.css">
+    
     <!-- Biblioteka Chart.js do wykresów w tle -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Biblioteka Gauge (Zegar) -->
@@ -41,8 +50,6 @@
                     <span class="material-icons">network_check</span>
                     <span id="ping-text">--</span> ms
                 </div>
-                
-                <!-- USUNIĘTO: status-text "Gotowy" -->
                 
                 <button id="unit-toggle" class="unit-switch" title="Przełącz jednostkę">Mbps</button>
             </div>
@@ -140,6 +147,7 @@
 
     <div id="toast-container"></div>
 
-    <script src="main.js"></script>
+    <!-- Ładowanie main.js jako modułu ES6 z /js/main.js -->
+    <script type="module" src="/js/main.js"></script>
 </body>
 </html>

@@ -1,0 +1,11 @@
+/* DASHBOARD LAYOUT */
+.dashboard-container {
+    display: flex;
+    flex-wrap: wrap; 
+    background: var(--surface);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 2rem;
+    min-height: 600px; 
+}

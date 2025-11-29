@@ -1,0 +1,118 @@
+/* --- POWIADOMIENIA (TOAST) --- */
+#toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 2000; 
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end; 
+    gap: 10px;
+    pointer-events: none; 
+}
+
+.toast {
+    background: var(--surface);
+    color: var(--text);
+    padding: 15px 20px;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    border-left: 5px solid var(--primary);
+    font-size: 0.95rem;
+    font-weight: 500;
+    
+    opacity: 0;
+    transform: translateX(50px);
+    animation: toastSlideIn 0.3s forwards ease-out;
+    
+    pointer-events: auto; 
+    max-width: 320px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+[data-theme="dark"] .toast {
+    box-shadow: 0 5px 20px rgba(0,0,0,0.6);
+    background: #2a2a2a;
+}
+
+@keyframes toastSlideIn {
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toastFadeOut {
+    to { opacity: 0; transform: translateX(50px); }
+}
+
+/* --- RESPANSYWNOŚĆ (MOBILE) --- */
+@media (max-width: 900px) {
+    .dashboard-container {
+        flex-direction: column; 
+        min-height: 85vh; 
+    }
+
+    .gauge-section {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        padding: 1rem; 
+        min-height: auto;
+        flex: 1; 
+    }
+    header { padding: 0.8rem 1rem; }
+    main { padding: 0 1rem; margin: 1.5rem auto; }
+
+    .stats-section { 
+        padding: 1.5rem; 
+        gap: 1rem; 
+        min-height: auto; 
+        flex: 1; 
+    }
+    
+    .stat-card { 
+        padding: 1.2rem; 
+        flex: 1; 
+    } 
+    
+    .stat-value { font-size: 3.5rem; } 
+    .stat-icon .material-icons { font-size: 36px; }
+    .stat-icon { padding: 15px; }
+    .stat-content-wrapper { gap: 1rem; }
+    .stat-label { font-size: 1.1rem; margin-bottom: 0; }
+    
+    .btn-primary { padding: 1rem 2rem; font-size: 1.1rem; }
+    
+    #toast-container {
+        left: auto;
+    }
+
+    table {
+        min-width: 0; 
+        font-size: 0.75rem; 
+    }
+    th, td {
+        padding: 8px 3px; 
+        word-break: break-word; 
+    }
+    td:first-child {
+        width: 25%;
+        font-size: 0.7rem;
+        line-height: 1.2;
+    }
+    
+    .pagination-controls {
+        justify-content: center;
+        flex-direction: column;
+    }
+    
+    .unit-switch {
+        bottom: 15px;
+        right: 15px;
+    }
+}
+
+@media (max-width: 400px) {
+    .stat-value { font-size: 2.5rem; }
+    .logo { font-size: 1.1rem; }
+    .gauge-section canvas { max-width: 100%; height: auto !important; }
+}

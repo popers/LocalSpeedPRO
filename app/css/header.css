@@ -1,0 +1,36 @@
+/* HEADER */
+header { 
+    background: var(--surface); 
+    padding: 1rem 2rem; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    box-shadow: var(--shadow); 
+    z-index: 10;
+}
+.logo { font-weight: 700; font-size: 1.4rem; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+
+.controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-icon { 
+    background: none; 
+    border: none; 
+    color: var(--text); 
+    cursor: pointer; 
+    padding: 8px; 
+    font-weight: bold;
+    display: flex;            
+    align-items: center;      
+    justify-content: center;  
+    height: 40px;             
+    min-width: 40px;          
+    border-radius: 50%;       
+    transition: background 0.2s;
+}
+
+.btn-icon:hover { background: rgba(128, 128, 128, 0.1); }
+.btn-icon:disabled { opacity: 0.3; cursor: not-allowed; }
