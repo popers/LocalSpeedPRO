@@ -1,8 +1,31 @@
-# .gitignore
-__pycache__/
-venv/
+# --- User specific rules ---
+# Dane i pliki tymczasowe
+data/
+*.csv
+*.log
+
+# Sekrety i konfiguracja lokalna
 .env
 .vscode/
-*.log
-*.csv
-data/
+
+# Środowisko wirtualne
+venv/
+
+# --- Standard Python & OS rules ---
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches for testing (jeśli dodasz testy w przyszłości)
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS generated files (zabezpieczenie przed śmieciami z systemu)
+.DS_Store
+.DS_Store?
+Thumbs.db
+
+# Jupyter Notebooks (częste w projektach data science)
+.ipynb_checkpoints
