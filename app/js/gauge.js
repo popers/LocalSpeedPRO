@@ -52,9 +52,15 @@ export function initGauge() {
         ? ["0", "25", "50", "75", "100", "125"]
         : ["0", "200", "400", "600", "800", "1000"];
 
+    // ZMIANA: Dynamiczne opacity dla highlights.
+    // W trybie jasnym (isDark=false) zwiększamy opacity, aby kolory nie były wyblakłe.
+    const alpha1 = isDark ? 0.1 : 0.15;
+    const alpha2 = isDark ? 0.3 : 0.4;
+    const alpha3 = isDark ? 0.6 : 0.8;
+
     let highlights = (currentUnit === 'mbs') 
-        ? [ { from: 0, to: 50, color: 'rgba(98, 0, 234, .1)' }, { from: 50, to: 100, color: 'rgba(98, 0, 234, .3)' }, { from: 100, to: 125, color: 'rgba(98, 0, 234, .6)' } ]
-        : [ { from: 0, to: 400, color: 'rgba(98, 0, 234, .1)' }, { from: 400, to: 800, color: 'rgba(98, 0, 234, .3)' }, { from: 800, to: 1000, color: 'rgba(98, 0, 234, .6)' } ];
+        ? [ { from: 0, to: 50, color: `rgba(98, 0, 234, ${alpha1})` }, { from: 50, to: 100, color: `rgba(98, 0, 234, ${alpha2})` }, { from: 100, to: 125, color: `rgba(98, 0, 234, ${alpha3})` } ]
+        : [ { from: 0, to: 400, color: `rgba(98, 0, 234, ${alpha1})` }, { from: 400, to: 800, color: `rgba(98, 0, 234, ${alpha2})` }, { from: 800, to: 1000, color: `rgba(98, 0, 234, ${alpha3})` } ];
 
     gauge = new RadialGauge({
         renderTo: 'speed-gauge',
@@ -126,13 +132,20 @@ export function checkGaugeRange(speedMbps) {
     let threshold = (currentUnit === 'mbs') ? 118 : 950;
     
     if (val > threshold && !gaugeScaled) {
+        // Przy skalowaniu również musimy uwzględnić motyw dla nowych highlights
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        const alpha1 = isDark ? 0.1 : 0.15;
+        const alpha2 = isDark ? 0.3 : 0.4;
+        const alpha3 = isDark ? 0.6 : 0.8;
+
         let newMax = (currentUnit === 'mbs') ? 375 : 3000;
         let newTicks = (currentUnit === 'mbs') 
             ? ["0", "50", "100", "150", "200", "250", "300", "375"]
             : ["0", "500", "1000", "1500", "2000", "2500", "3000"];
+        
         let newHighlights = (currentUnit === 'mbs')
-            ? [ { from: 0, to: 125, color: 'rgba(98, 0, 234, .1)' }, { from: 125, to: 250, color: 'rgba(98, 0, 234, .3)' }, { from: 250, to: 375, color: 'rgba(98, 0, 234, .6)' } ]
-            : [ { from: 0, to: 1000, color: 'rgba(98, 0, 234, .1)' }, { from: 1000, to: 2000, color: 'rgba(98, 0, 234, .3)' }, { from: 2000, to: 3000, color: 'rgba(98, 0, 234, .6)' } ];
+            ? [ { from: 0, to: 125, color: `rgba(98, 0, 234, ${alpha1})` }, { from: 125, to: 250, color: `rgba(98, 0, 234, ${alpha2})` }, { from: 250, to: 375, color: `rgba(98, 0, 234, ${alpha3})` } ]
+            : [ { from: 0, to: 1000, color: `rgba(98, 0, 234, ${alpha1})` }, { from: 1000, to: 2000, color: `rgba(98, 0, 234, ${alpha2})` }, { from: 2000, to: 3000, color: `rgba(98, 0, 234, ${alpha3})` } ];
 
         gauge.update({ maxValue: newMax, majorTicks: newTicks, highlights: newHighlights });
         gaugeScaled = true; 

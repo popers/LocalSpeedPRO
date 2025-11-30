@@ -178,6 +178,7 @@ window.onload = () => {
         updateThemeIcon(next);
         
         reloadGauge(); 
+        initCharts(); // ZMIANA: Odśwież kolory wykresów przy zmianie motywu
         updateTexts(getGaugeInstance()); 
 
         saveSettings(lang, next, currentUnit);
