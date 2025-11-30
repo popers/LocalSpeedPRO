@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="pl"> <!-- Zostawiam lang="pl" jako domyślny fallback w pliku -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -27,6 +27,7 @@
 
     <script>
         (function() {
+            // FIX: Funkcja do konwersji HEX na RGB dla dynamicznego koloru w CSS
             function hexToRgb(hex) {
                 let c;
                 if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
@@ -40,6 +41,7 @@
                 return null;
             }
 
+            // --- JĘZYK I MOTYW ---
             const savedTheme = localStorage.getItem('ls_theme') || 'dark';
             document.documentElement.setAttribute('data-theme', savedTheme);
             
@@ -49,6 +51,10 @@
                 const rgb = hexToRgb(savedColor);
                 if(rgb) document.documentElement.style.setProperty('--primary-rgb', rgb);
             }
+
+            // KRUCJALNA ZMIANA (FIX FOUC): Ustawiamy atrybut lang elementu <html> PRZED renderowaniem ciała strony.
+            const savedLang = localStorage.getItem('ls_lang') || 'en'; // Domyślnie na EN
+            document.documentElement.setAttribute('lang', savedLang);
         })();
     </script>
 </head>
@@ -80,7 +86,8 @@
 
     <div class="app-layout">
         
-        <aside class="sidebar" id="app-sidebar">
+        <!-- FIX FOUC: Domyślnie ukrywamy sidebar za pomocą klasy "untranslated" -->
+        <aside class="sidebar untranslated" id="app-sidebar">
             <div class="sidebar-mobile-header">
                 <span class="material-icons">speed</span>
                 LocalSpeed PRO

@@ -23,14 +23,13 @@
                 let c;
                 if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
                     c= hex.substring(1).split('');
-                    if(c.length== 3){
-                        c= [c[0], c[0], c[1], c[1], c[2], c[2]];
-                    }
+                    if(c.length== 3) c= [c[0], c[0], c[1], c[1], c[2], c[2]];
                     c= '0x'+c.join('');
                     return [(c>>16)&255, (c>>8)&255, c&255].join(', ');
                 }
                 return null;
             }
+            // --- JĘZYK I MOTYW (FIX BŁYSKU PL -> EN) ---
             const savedTheme = localStorage.getItem('ls_theme') || 'dark';
             document.documentElement.setAttribute('data-theme', savedTheme);
             const savedColor = localStorage.getItem('ls_primary_color');
@@ -39,6 +38,9 @@
                 const rgb = hexToRgb(savedColor);
                 if(rgb) document.documentElement.style.setProperty('--primary-rgb', rgb);
             }
+            // KRUCJALNA ZMIANA (FIX FOUC): Ustawiamy atrybut lang elementu <html> PRZED renderowaniem ciała strony.
+            const savedLang = localStorage.getItem('ls_lang') || 'en'; // Domyślnie na EN
+            document.documentElement.setAttribute('lang', savedLang);
         })();
     </script>
 </head>
@@ -69,7 +71,8 @@
 
     <div class="app-layout">
         
-        <aside class="sidebar" id="app-sidebar">
+        <!-- FIX FOUC: Domyślnie ukrywamy sidebar za pomocą klasy "untranslated" -->
+        <aside class="sidebar untranslated" id="app-sidebar">
             <div class="sidebar-mobile-header">
                 <span class="material-icons">speed</span>
                 LocalSpeed PRO
@@ -619,3 +622,25 @@
     </script>
 </body>
 </html>
+" code between  and  in the most up-to-date Canvas "Utility Functions" document above and am asking a query about/based on this code below.
+Instructions to follow:
+  * Don't output/edit the document if the query is Direct/Simple. For example, if the query asks for a simple explanation, output a direct answer.
+  * Make sure to **edit** the document if the query shows the intent of editing the document, in which case output the entire edited document, **not just that section or the edits**.
+    * Don't output the same document/empty document and say that you have edited it.
+    * Don't change unrelated code in the document.
+  * Don't output  and  in your final response.
+  * Any references like "this" or "selected code" refers to the code between  and  tags.
+  * Just acknowledge my request in the introduction.
+  * Make sure to refer to the document as "Canvas" in your response.
+
+To samo a może nawet gorzej.Rozumiem, że poprzednie próby naprawienia problemu migania polskiego tekstu (Flash of Untranslated Content – FOUC) nie przyniosły skutku i problem jest nadal widoczny. Przepraszam za to.
+
+Ponieważ wprowadziliśmy już zmiany w HTML/CSS mające na celu wczesne ustawienie języka, najbardziej prawdopodobną przyczyną jest to, że CSS ukrywający zawartość nie jest stosowany natychmiast, a JavaScript ujawniający zawartość (sidebar) jest uruchamiany w niewłaściwym momencie lub w niewłaściwy sposób.
+
+Aby rozwiązać to skutecznie, zaimplementujemy mechanizm ujawniania zawartości bezpośrednio w funkcji `updateTexts` w Canvas, która jest sercem mechanizmu tłumaczenia i jest wywoływana po załadowaniu ustawień i przetłumaczeniu.
+
+### Modyfikacja `localspeed_wip/app/js/utils.js`
+
+Dodamy logikę, która usuwa klasę `untranslated` (tę, którą dodaliśmy wcześniej do plików HTML i `sidebar.css`) z elementu `app-sidebar` w momencie, gdy tłumaczenie jest już zastosowane.
+
+Oto pełny, zmodyfikowany kod dla Canvas (`localspeed_wip/app/js/utils.js`):
