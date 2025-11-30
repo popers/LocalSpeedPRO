@@ -3,7 +3,8 @@ import { translations } from './config.js';
 export const el = (id) => document.getElementById(id);
 
 // --- Zmienne globalne do stanu aplikacji ---
-export let lang = localStorage.getItem('ls_lang') || 'pl';
+// ZMIANA: Domyślnie 'en' jeśli localStorage jest pusty
+export let lang = localStorage.getItem('ls_lang') || 'en';
 export let currentUnit = localStorage.getItem('ls_unit') || 'mbps';
 export let lastResultDown = 0; // w Mbps
 export let lastResultUp = 0;   // w Mbps

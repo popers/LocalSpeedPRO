@@ -30,14 +30,14 @@ class SpeedResult(Base):
     ping = Column(Float)
     download = Column(Float)
     upload = Column(Float)
-    lang = Column(String, default="pl")
+    lang = Column(String, default="en") # ZMIANA: Domyślnie angielski dla wyników (jeśli nie podano)
     theme = Column(String, default="dark")
 
 class Settings(Base):
     __tablename__ = "settings"
     id = Column(Integer, primary_key=True, index=True)
-    lang = Column(String, default="pl")
-    theme = Column(String, default="dark") # POPRAWKA: Usunięto zduplikowane "Column ="
+    lang = Column(String, default="en") # ZMIANA: Domyślnie angielski w bazie
+    theme = Column(String, default="dark") 
     unit = Column(String, default="mbps") # 'mbps' lub 'mbs'
 
 # Tworzenie tabel

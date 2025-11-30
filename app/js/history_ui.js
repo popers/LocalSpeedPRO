@@ -164,15 +164,24 @@ function updatePaginationControls() {
 }
 
 // --- AKTUALIZACJA IKON SORTOWANIA ---
+// POPRAWIONE: Podmiana tekstu ikony zamiast rotacji CSS
 function updateSortIcons() {
     document.querySelectorAll('th.sortable').forEach(th => {
-        th.classList.remove('sort-asc', 'sort-desc'); 
-        const icon = th.querySelector('.sort-icon');
-        icon.innerText = 'unfold_more';
+        // Resetujemy stan aktywności
+        th.classList.remove('sort-active');
         
+        const icon = th.querySelector('.sort-icon');
+        
+        // Sprawdzamy czy to aktywna kolumna
         if (th.getAttribute('data-sort') === sortBy) {
-            th.classList.add(sortOrder === 'asc' ? 'sort-asc' : 'sort-desc');
-            icon.innerText = sortOrder === 'asc' ? 'expand_less' : 'expand_more';
+            th.classList.add('sort-active');
+            
+            // Ustawiamy odpowiednią strzałkę
+            // arrow_upward (rosnąco) / arrow_downward (malejąco)
+            icon.innerText = sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward';
+        } else {
+            // Domyślna ikona dla nieaktywnych
+            icon.innerText = 'unfold_more';
         }
     });
 }

@@ -43,7 +43,8 @@ def get_settings(db: Session = Depends(get_db)):
     
     settings = db.query(Settings).filter(Settings.id == 1).first()
     if not settings:
-        settings = Settings(id=1, lang="pl", theme="dark", unit="mbps")
+        # ZMIANA: Tworzymy domyślne ustawienia z językiem 'en'
+        settings = Settings(id=1, lang="en", theme="dark", unit="mbps")
         db.add(settings)
         db.commit()
     return settings

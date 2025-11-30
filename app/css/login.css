@@ -94,12 +94,12 @@ body {
 
 /* Kontrolki w prawym górnym rogu (Język i Motyw) */
 .controls-wrapper {
-    position: absolute;
+    position: fixed; /* ZMIANA: fixed zamiast absolute - przykleja do okna */
     top: 20px;
     right: 20px;
     display: flex;
     gap: 10px;
-    z-index: 20;
+    z-index: 100; /* Wysoki z-index, aby przyciski były nad formularzem przy przewijaniu */
 }
 
 .btn-icon {
@@ -109,6 +109,7 @@ body {
     cursor: pointer;
     padding: 8px;
     font-weight: bold;
+    font-size: 1.2rem; /* ZWIĘKSZONO: Aby PL/EN pasowało wielkością do ikon */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -116,8 +117,60 @@ body {
     min-width: 40px;
     border-radius: 50%;
     transition: background 0.2s;
+    
+    /* Opcjonalnie: lekkie rozmycie tła pod przyciskiem, aby był czytelny nad formularzem */
+    backdrop-filter: blur(2px); 
 }
 
 .btn-icon:hover {
     background: rgba(128, 128, 128, 0.1);
+}
+
+/* --- RESPONSYWNOŚĆ MOBILNA --- */
+@media (max-width: 480px) {
+    body {
+        /* Centrowanie na środku ekranu */
+        align-items: center;
+        padding-top: 0;
+        overflow: hidden; /* ZABLOKOWANIE PRZEWIJANIA */
+    }
+
+    .login-container {
+        padding: 1.5rem; /* Zmniejszony padding */
+        width: 90%;
+        max-width: 350px;
+        margin: auto; /* Centrowanie */
+    }
+
+    .login-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .login-header .material-icons {
+        font-size: 40px;
+        margin-bottom: 5px;
+    }
+
+    .login-header h2 {
+        font-size: 1.3rem;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-group input {
+        padding: 10px; /* Mniejsze pola */
+        font-size: 0.95rem;
+    }
+
+    .btn-login {
+        padding: 10px;
+    }
+
+    /* Przesuwamy kontrolki nieco niżej/bliżej krawędzi na mobile */
+    .controls-wrapper {
+        top: 10px;
+        right: 10px;
+    }
 }

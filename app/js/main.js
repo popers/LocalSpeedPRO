@@ -131,7 +131,8 @@ async function startTest() {
 window.onload = () => {
     const savedTheme = localStorage.getItem('ls_theme') || 'dark';
     document.body.setAttribute('data-theme', savedTheme);
-    setLang(localStorage.getItem('ls_lang') || 'pl');
+    // ZMIANA: Domyślnie 'en' w localStorage fallback
+    setLang(localStorage.getItem('ls_lang') || 'en');
     setCurrentUnit(localStorage.getItem('ls_unit') || 'mbps');
     updateThemeIcon(savedTheme);
 

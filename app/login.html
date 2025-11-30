@@ -74,8 +74,8 @@
         document.body.setAttribute('data-theme', savedTheme);
         updateThemeIcon(savedTheme);
         
-        // Wczytanie języka z localStorage
-        const savedLang = localStorage.getItem('ls_lang') || 'pl';
+        // Wczytanie języka z localStorage (ZMIANA NA 'en' domyślnie)
+        const savedLang = localStorage.getItem('ls_lang') || 'en';
         setLang(savedLang);
         updateLoginTexts();
 
