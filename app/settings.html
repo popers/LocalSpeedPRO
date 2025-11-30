@@ -89,10 +89,200 @@
         </aside>
 
         <main>
+            <h1 class="page-title" data-key="settings_title">Ustawienia</h1>
+
             <div class="settings-container">
                 <div class="settings-grid">
                     
-                    <!-- Kafelka: Wygląd -->
+                    <!-- 1. Kafelka: OIDC (SSO) -->
+                    <div class="setting-card full-width">
+                        <div class="card-header">
+                            <span class="material-icons">fingerprint</span>
+                            <span data-key="settings_oidc_title">Logowanie OIDC (SSO)</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="desc-text" data-key="settings_oidc_desc">
+                                Skonfiguruj logowanie przez OpenID Connect (np. Authentik, Keycloak, Google, Authelia).
+                            </p>
+
+                            <div class="toggle-row">
+                                <label for="oidc-toggle" data-key="lbl_oidc_enable">Włącz logowanie OIDC</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="oidc-toggle">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+
+                            <div class="form-group-grid">
+                                <div class="input-group full">
+                                    <label data-key="lbl_oidc_discovery">Discovery URL (.well-known):</label>
+                                    <input type="text" id="oidc-discovery" placeholder="https://auth.example.com/.well-known/openid-configuration" class="input-field">
+                                </div>
+                                <div class="input-group">
+                                    <label data-key="lbl_oidc_client_id">Client ID:</label>
+                                    <input type="text" id="oidc-client-id" class="input-field">
+                                </div>
+                                <div class="input-group">
+                                    <label data-key="lbl_oidc_secret">Client Secret:</label>
+                                    <div class="password-wrapper">
+                                        <input type="password" id="oidc-client-secret" class="input-field">
+                                        <span class="material-icons toggle-pass" onclick="togglePassVis('oidc-client-secret')">visibility</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="input-group full" style="margin-top: 1rem; opacity: 0.8;">
+                                <label data-key="lbl_redirect">Redirect URI (Callback) do wpisania u dostawcy:</label>
+                                <div style="display: flex; gap: 5px;">
+                                    <input type="text" id="oidc-redirect-uri" readonly class="input-field readonly">
+                                    <button class="btn-secondary" onclick="copyToClipboard('oidc-redirect-uri')" title="Kopiuj">
+                                        <span class="material-icons" style="font-size: 18px;">content_copy</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 1rem; text-align: right;">
+                                <!-- NAPRAWIONO STYL PRZYCISKU ZAPISZ -->
+                                <button id="save-oidc-btn" class="btn-action-fill btn-primary-fill">
+                                    <span class="material-icons">save</span> <span data-key="btn_save">Zapisz</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Kafelka: KOPIA ZAPASOWA -->
+                    <div class="setting-card full-width">
+                        <div class="card-header">
+                            <span class="material-icons">cloud_sync</span>
+                            <span data-key="settings_backup_title">Kopia Zapasowa</span>
+                        </div>
+                        <div class="card-body">
+                            
+                            <div class="backup-manual-grid">
+                                <div class="backup-box blue">
+                                    <div class="backup-icon"><span class="material-icons">cloud_download</span></div>
+                                    <div class="backup-content">
+                                        <h4 data-key="backup_download_title">Pobierz Kopię</h4>
+                                        <p data-key="backup_download_desc">Pobierz plik SQL zawierający całą historię pomiarów oraz ustawienia.</p>
+                                        <a href="/api/backup/download" target="_blank" class="btn-action-fill btn-primary-fill">
+                                            <span class="material-icons">download</span> <span data-key="btn_download_sql">POBIERZ .SQL</span>
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <div class="backup-box red">
+                                    <div class="backup-icon"><span class="material-icons">cloud_upload</span></div>
+                                    <div class="backup-content">
+                                        <h4 data-key="backup_restore_title">Przywróć Kopię</h4>
+                                        <p class="warning-text" data-key="backup_restore_warn">UWAGA: Przywrócenie kopii nadpisze wszystkie obecne dane!</p>
+                                        
+                                        <div class="file-upload-wrapper">
+                                            <input type="file" id="restore-file-input" accept=".sql,.db" style="display: none;">
+                                            <button id="select-file-btn" class="btn-file-select">
+                                                <span class="material-icons">folder_open</span> <span data-key="btn_select_file">Wybierz plik</span>
+                                            </button>
+                                            <span id="file-name-display" class="file-name">Brak wybranego pliku</span>
+                                        </div>
+
+                                        <button id="restore-btn" class="btn-action-fill btn-danger-fill" disabled>
+                                            <span class="material-icons">history</span> <span data-key="btn_restore_file">PRZYWRÓĆ Z PLIKU</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="gdrive-section">
+                                <div class="gdrive-header">
+                                    <div style="display:flex; align-items:center; gap: 10px;">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" width="24" alt="GDrive">
+                                        <h4>Google Drive</h4>
+                                    </div>
+                                </div>
+                                <p class="desc-text" data-key="gdrive_desc">Automatycznie wysyłaj kopie zapasowe do folderu na Google Drive.</p>
+
+                                <div class="gdrive-status-line">
+                                    <span class="material-icons link-icon">link</span>
+                                    <span id="gdrive-status-text">Status: Niepołączono</span>
+                                </div>
+
+                                <div class="backup-info-grid">
+                                    <div><small>Ostatni backup:</small> <span id="last-backup-date">--</span> | <span id="last-backup-status">--</span></div>
+                                    <div id="next-backup-info" style="display:none;"><small>Następny backup:</small> <span id="next-backup-text">--</span></div>
+                                </div>
+
+                                <div class="form-group-grid">
+                                    <div class="input-group">
+                                        <label>Client ID:</label>
+                                        <input type="text" id="gd-client-id" class="input-field">
+                                    </div>
+                                    <div class="input-group">
+                                        <label>Client Secret:</label>
+                                        <div class="password-wrapper">
+                                            <input type="password" id="gd-client-secret" class="input-field">
+                                            <span class="material-icons toggle-pass" onclick="togglePassVis('gd-client-secret')">visibility</span>
+                                        </div>
+                                    </div>
+                                    <div class="input-group">
+                                        <label data-key="lbl_folder">Nazwa folderu (Google Drive):</label>
+                                        <input type="text" id="gd-folder" value="LocalSpeed_Backup1" class="input-field">
+                                    </div>
+                                    <div class="input-group">
+                                        <label data-key="lbl_retention">Retencja plików (dni):</label>
+                                        <input type="number" id="gd-retention" value="7" class="input-field">
+                                    </div>
+                                    <div class="input-group">
+                                        <label data-key="lbl_freq">Częstotliwość (co ile dni):</label>
+                                        <input type="number" id="gd-freq" value="1" min="1" class="input-field">
+                                    </div>
+                                    <div class="input-group">
+                                        <label data-key="lbl_time">Godzina backupu:</label>
+                                        <input type="time" id="gd-time" value="04:00" class="input-field">
+                                    </div>
+                                    
+                                    <div class="input-group full">
+                                        <label data-key="lbl_redirect">Redirect URI (Callback) do wpisania u dostawcy:</label>
+                                        <div style="display: flex; gap: 5px;">
+                                            <input type="text" id="gdrive-redirect-uri" readonly class="input-field readonly">
+                                            <button class="btn-secondary" onclick="copyToClipboard('gdrive-redirect-uri')" title="Kopiuj">
+                                                <span class="material-icons" style="font-size: 18px;">content_copy</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="gdrive-actions-row">
+                                    <div class="left-actions">
+                                        <button id="connect-gdrive-btn" class="btn-action-fill btn-primary-fill">
+                                            <span class="material-icons">link</span> <span data-key="btn_connect_account">POŁĄCZ KONTO</span>
+                                        </button>
+                                        <button id="trigger-backup-btn" class="btn-action-fill btn-primary-fill">
+                                            <span class="material-icons">cloud_upload</span> <span data-key="btn_backup_now">WYŚLIJ TERAZ</span>
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="right-actions">
+                                        <button id="save-gdrive-btn" class="btn-action-fill btn-primary-fill">
+                                            <span class="material-icons">save</span> <span data-key="btn_save">Zapisz</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <details class="help-details">
+                                    <summary data-key="help_gdrive_config">Jak skonfigurować Client ID/Secret?</summary>
+                                    <ol>
+                                        <li>Wejdź na Google Cloud Console i utwórz nowy projekt.</li>
+                                        <li>Włącz API "Google Drive API" w bibliotece.</li>
+                                        <li>W "Credentials" utwórz "OAuth Client ID" (Typ: Web application).</li>
+                                        <li>Skopiuj <strong>Redirect URI</strong> z pola powyżej i wklej w konsoli Google.</li>
+                                    </ol>
+                                </details>
+
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- 3. Kafelka: Wygląd (PRZESUNIĘTA NA DÓŁ) -->
                     <div class="setting-card">
                         <div class="card-header">
                             <span class="material-icons">palette</span>
@@ -100,7 +290,6 @@
                         </div>
                         <div class="card-body">
                             
-                            <!-- Color Picker -->
                             <div>
                                 <label style="font-size: 0.9rem; opacity: 0.8;" data-key="lbl_primary_color">Kolor wiodący</label>
                                 <div class="color-picker-wrapper">
@@ -120,95 +309,30 @@
                         </div>
                     </div>
 
-                    <!-- Kafelka: OIDC -->
-                    <div class="setting-card" style="grid-column: 1 / -1;">
-                        <div class="card-header">
-                            <span class="material-icons">fingerprint</span>
-                            <span data-key="settings_oidc_title">Logowanie OIDC (SSO)</span>
-                        </div>
-                        <div class="card-body">
-                            <p style="font-size: 0.9rem; opacity: 0.7; margin: 0 0 10px 0;" data-key="settings_oidc_desc">
-                                Skonfiguruj logowanie przez OpenID Connect (np. Authentik, Keycloak, Google, Authelia).
-                            </p>
-
-                            <!-- Toggle -->
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-                                <label for="oidc-toggle" style="font-weight: 500;" data-key="lbl_oidc_enable">Włącz logowanie OIDC</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="oidc-toggle">
-                                    <span class="slider round"></span>
-                                </label>
-                            </div>
-
-                            <div class="oidc-form-group">
-                                <label data-key="lbl_oidc_discovery">Discovery URL (.well-known):</label>
-                                <input type="text" id="oidc-discovery" placeholder="https://auth.example.com/.well-known/openid-configuration" class="input-field">
-                            </div>
-
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
-                                <div class="oidc-form-group">
-                                    <label data-key="lbl_oidc_client_id">Client ID:</label>
-                                    <input type="text" id="oidc-client-id" class="input-field">
-                                </div>
-                                <div class="oidc-form-group">
-                                    <label data-key="lbl_oidc_secret">Client Secret:</label>
-                                    <div style="position: relative;">
-                                        <input type="password" id="oidc-client-secret" class="input-field" style="padding-right: 40px;">
-                                        <span class="material-icons toggle-pass" onclick="togglePassVis()">visibility</span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Readonly Redirect URI helper -->
-                            <div class="oidc-form-group" style="margin-top: 1rem; opacity: 0.8;">
-                                <label data-key="lbl_oidc_redirect">Redirect URI (Callback) do wpisania u dostawcy:</label>
-                                <div style="display: flex; gap: 5px;">
-                                    <input type="text" id="oidc-redirect-uri" readonly class="input-field readonly">
-                                    <button class="btn-secondary" onclick="copyRedirect()" title="Kopiuj">
-                                        <span class="material-icons" style="font-size: 18px;">content_copy</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div style="margin-top: 1rem; text-align: right;">
-                                <button id="save-oidc-btn" class="btn-primary-small">
-                                    <span class="material-icons">save</span> Zapisz
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
                 </div>
             </div>
         </main>
     </div>
 
     <div id="toast-container"></div>
-
+    
+    <!-- CSS (Same as before) -->
     <style>
-        /* Prosty Switch CSS */
-        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
-        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--primary); }
-        input:checked + .slider:before { transform: translateX(24px); }
-
-        .oidc-form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
-        .input-field {
-            padding: 10px; border-radius: 8px; border: 1px solid var(--border);
-            background: var(--bg); color: var(--text); font-family: inherit; font-size: 0.95rem; width: 100%; box-sizing: border-box;
+        .gdrive-actions-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+            gap: 15px;
         }
-        .input-field:focus { outline: none; border-color: var(--primary); }
-        .input-field.readonly { background: rgba(128,128,128,0.05); cursor: default; }
+        .left-actions { display: flex; gap: 10px; }
+        .right-actions { margin-left: auto; }
         
-        .toggle-pass {
-            position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-            cursor: pointer; opacity: 0.6; font-size: 20px;
-        }
-        .btn-primary-small {
-            background: var(--primary); color: white; border: none; padding: 8px 20px;
-            border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font-weight: 500;
+        @media (max-width: 600px) {
+            .gdrive-actions-row { flex-direction: column; align-items: stretch; }
+            .right-actions { margin-left: 0; text-align: right; }
+            .left-actions { flex-direction: column; }
         }
     </style>
 
@@ -216,23 +340,22 @@
         import { el, log, setLang, lang, updateThemeIcon, updateTexts, applyPrimaryColor, setPrimaryColor } from '/js/utils.js';
         import { translations } from '/js/config.js';
 
-        // --- GLOBALNE FUNKCJE POMOCNICZE ---
-        window.togglePassVis = () => {
-            const input = el('oidc-client-secret');
+        window.togglePassVis = (id) => {
+            const input = el(id);
             input.type = input.type === 'password' ? 'text' : 'password';
         };
 
-        window.copyRedirect = () => {
-            const field = el('oidc-redirect-uri');
+        window.copyToClipboard = (id) => {
+            const field = el(id);
             field.select();
             document.execCommand('copy');
             log("Skopiowano do schowka");
         };
 
-        // Renderowanie URI
         const proto = window.location.protocol;
         const host = window.location.host;
         el('oidc-redirect-uri').value = `${proto}//${host}/api/auth/oidc/callback`;
+        el('gdrive-redirect-uri').value = `${proto}//${host}/api/backup/google/callback`; 
         
         function debounce(func, wait) {
             let timeout;
@@ -252,114 +375,175 @@
             if(overlay) overlay.onclick = closeMenu;
         }
 
-        // --- DIRECT FETCH FUNCTION (Omija cache plików JS) ---
         async function fetchAndFillSettings() {
             try {
-                // cache: "no-store" oraz timestamp aby na 100% wymusić świeże dane
-                const res = await fetch(`/api/settings?t=${Date.now()}`, { 
-                    cache: "no-store",
-                    headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
-                });
+                const res = await fetch(`/api/settings?t=${Date.now()}`, { cache: "no-store" });
                 if (!res.ok) throw new Error("API Error");
                 
                 const data = await res.json();
-                console.log("Settings received:", data); // DEBUG
+                
+                if(el('oidc-toggle')) el('oidc-toggle').checked = !!data.oidc_enabled;
+                if(el('oidc-discovery')) el('oidc-discovery').value = data.oidc_discovery_url || '';
+                if(el('oidc-client-id')) el('oidc-client-id').value = data.oidc_client_id || '';
+                if(el('oidc-client-secret')) el('oidc-client-secret').value = data.oidc_client_secret || '';
 
-                // 1. OIDC Fields
-                const oidcToggle = el('oidc-toggle');
-                if(oidcToggle) oidcToggle.checked = !!data.oidc_enabled; // Konwersja na boolean
-                
-                const oidcDiscovery = el('oidc-discovery');
-                if(oidcDiscovery) oidcDiscovery.value = data.oidc_discovery_url || '';
-                
-                const oidcClientId = el('oidc-client-id');
-                if(oidcClientId) oidcClientId.value = data.oidc_client_id || '';
-                
-                const oidcClientSecret = el('oidc-client-secret');
-                if(oidcClientSecret) oidcClientSecret.value = data.oidc_client_secret || '';
+                if(el('gd-client-id')) el('gd-client-id').value = data.gdrive_client_id || '';
+                if(el('gd-client-secret')) el('gd-client-secret').value = data.gdrive_client_secret || '';
+                if(el('gd-folder')) el('gd-folder').value = data.gdrive_folder_name || 'LocalSpeed_Backup';
+                if(el('gd-freq')) el('gd-freq').value = data.gdrive_backup_frequency || 1;
+                if(el('gd-time')) el('gd-time').value = data.gdrive_backup_time || '04:00';
+                if(el('gd-retention')) el('gd-retention').value = data.gdrive_retention_days || 7;
 
-                // 2. Global state sync (język, motyw, kolor)
-                if(data.lang && lang !== data.lang) { 
-                    setLang(data.lang); 
-                    localStorage.setItem('ls_lang', data.lang); 
-                }
-                if(data.theme) { 
-                    document.body.setAttribute('data-theme', data.theme); 
-                    localStorage.setItem('ls_theme', data.theme); 
-                }
+                if(data.lang && lang !== data.lang) { setLang(data.lang); localStorage.setItem('ls_lang', data.lang); }
+                if(data.theme) { document.body.setAttribute('data-theme', data.theme); localStorage.setItem('ls_theme', data.theme); }
                 
-                // 3. Color sync
                 const incomingColor = data.primary_color;
-                const effectiveCurrent = localStorage.getItem('ls_primary_color');
-                // Jeśli baza ma kolor, a localstorage nie lub inny -> aktualizuj
-                if (incomingColor && incomingColor !== 'null' && incomingColor !== effectiveCurrent) {
+                if (incomingColor && incomingColor !== 'null') {
                     setPrimaryColor(incomingColor);
                     localStorage.setItem('ls_primary_color', incomingColor);
-                    
-                    // Aktualizuj picker jeśli istnieje
-                    const picker = el('primary-color-picker');
-                    const hexInput = el('color-hex');
-                    if(picker) picker.value = incomingColor;
-                    if(hexInput) hexInput.value = incomingColor;
+                    if(el('primary-color-picker')) el('primary-color-picker').value = incomingColor;
+                    if(el('color-hex')) el('color-hex').value = incomingColor;
                 }
 
                 updateThemeIcon(document.body.getAttribute('data-theme'));
                 updateTexts();
+                fetchBackupStatus();
 
-            } catch(e) {
-                console.error("Failed to load settings:", e);
-                log(translations[lang].err + "Failed to load settings");
-            }
+            } catch(e) { console.error("Failed to load settings:", e); }
         }
+        
+        // --- POPRAWIONA LOGIKA ODMIAY ---
+        function formatDays(days) {
+            const d = parseInt(days);
+            if(isNaN(d)) return days;
+            if(lang === 'pl') {
+                if(d === 1) return "1 dzień";
+                // Prosta odmiana dla dni > 1 (w UI wystarczy "dni")
+                return d + " dni"; 
+            }
+            return d + (d === 1 ? " day" : " days");
+        }
+
+        async function fetchBackupStatus() {
+            try {
+                const res = await fetch('/api/backup/status');
+                const stat = await res.json();
+                if(stat.last_backup) el('last-backup-date').innerText = stat.last_backup;
+                if(stat.status) el('last-backup-status').innerText = stat.status;
+                
+                const nextInfoDiv = el('next-backup-info');
+                if(stat.connected && stat.next_backup_time) {
+                    const daysStr = formatDays(stat.next_backup_freq);
+                    const formattedStr = `${stat.next_backup_time} (co ${daysStr})`;
+                    el('next-backup-text').innerText = formattedStr;
+                    nextInfoDiv.style.display = 'block';
+                } else {
+                    nextInfoDiv.style.display = 'none';
+                }
+                
+                const statusText = el('gdrive-status-text');
+                const btnConnect = el('connect-gdrive-btn');
+
+                if(stat.connected) {
+                    statusText.innerText = "Status: Połączono";
+                    statusText.style.color = "var(--primary)";
+                    statusText.innerHTML = `<span class="material-icons link-icon">link</span> Status: Połączono`;
+                    
+                    btnConnect.innerHTML = `<span class="material-icons">link_off</span> <span data-key="btn_disconnect_account">Odłącz konto</span>`;
+                    btnConnect.setAttribute('data-action', 'disconnect');
+                    btnConnect.classList.remove('btn-primary-fill');
+                    btnConnect.classList.add('btn-danger-fill');
+                    
+                } else {
+                    statusText.innerText = "Status: Niepołączono";
+                    statusText.style.color = "#ff5252";
+                    statusText.innerHTML = `<span class="material-icons link-icon">link_off</span> Status: Niepołączono`;
+                    
+                    btnConnect.innerHTML = `<span class="material-icons">link</span> <span data-key="btn_connect_account">POŁĄCZ KONTO</span>`;
+                    btnConnect.setAttribute('data-action', 'connect');
+                    btnConnect.classList.remove('btn-danger-fill');
+                    btnConnect.classList.add('btn-primary-fill');
+                }
+                updateTexts(); 
+            } catch(e) {}
+        }
+
+        const fileInput = el('restore-file-input');
+        const selectFileBtn = el('select-file-btn');
+        const fileNameDisplay = el('file-name-display');
+        const restoreBtn = el('restore-btn');
+
+        if(selectFileBtn) selectFileBtn.onclick = () => fileInput.click();
+        
+        if(fileInput) fileInput.onchange = () => {
+            if(fileInput.files.length > 0) {
+                fileNameDisplay.innerText = fileInput.files[0].name;
+                restoreBtn.disabled = false;
+            } else {
+                fileNameDisplay.innerText = translations[lang].no_file || "Brak wybranego pliku";
+                restoreBtn.disabled = true;
+            }
+        };
+
+        if(restoreBtn) restoreBtn.onclick = async () => {
+            if(!fileInput.files.length) return;
+            if(!confirm(translations[lang].backup_restore_warn || "UWAGA: Nadpisanie danych!")) return;
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                restoreBtn.disabled = true;
+                restoreBtn.innerText = "Przywracanie...";
+                const res = await fetch('/api/backup/restore', { method: 'POST', body: formData });
+                if(res.ok) {
+                    log("Przywrócono bazę danych. Odśwież stronę.");
+                    // TWARDE ODŚWIEŻENIE PO 1.5S
+                    setTimeout(() => window.location.reload(true), 1500);
+                } else {
+                    throw new Error("Błąd przywracania");
+                }
+            } catch(e) {
+                log(translations[lang].err + "Restore failed");
+                restoreBtn.disabled = false;
+                restoreBtn.innerHTML = `<span class="material-icons">history</span> PRZYWRÓĆ Z PLIKU`;
+            }
+        };
 
         window.onload = async () => {
             initMenu();
-            
-            // --- WYWOŁANIE NOWEJ FUNKCJI ---
             await fetchAndFillSettings();
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            if(urlParams.get('gdrive_auth') === 'success') {
+                log("Pomyślnie połączono z Google Drive!");
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            if(urlParams.get('error')) {
+                const msg = urlParams.get('msg') || urlParams.get('error');
+                log("Błąd autoryzacji: " + msg);
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
 
             el('logout-btn').onclick = async () => {
                 await fetch('/api/logout', { method: 'POST' });
                 window.location.href = '/login.html?logout=true';
             };
 
-            // Logika kolorów (UI Events)
             const picker = el('primary-color-picker');
-            const hexInput = el('color-hex');
-            const resetBtn = el('reset-color-btn');
-
             const saveColorDebounced = debounce(async (newColor) => {
                 setPrimaryColor(newColor);
                 if (newColor) localStorage.setItem('ls_primary_color', newColor);
-                else localStorage.removeItem('ls_primary_color');
-                
-                // Zapisz tylko kolor, reszta bez zmian
-                await fetch('/api/settings', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ primary_color: newColor })
-                });
+                await fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ primary_color: newColor }) });
                 log(translations[lang].msg_color_saved);
             }, 800);
 
-            picker.addEventListener('input', (e) => {
-                hexInput.value = e.target.value;
+            if(picker) picker.addEventListener('input', (e) => {
+                el('color-hex').value = e.target.value;
                 applyPrimaryColor(e.target.value);
                 saveColorDebounced(e.target.value);
             });
-            picker.addEventListener('change', (e) => saveColorDebounced(e.target.value));
 
-            hexInput.addEventListener('input', (e) => {
-                let val = e.target.value;
-                if (!val.startsWith('#')) val = '#' + val;
-                if (/^#[0-9A-F]{6}$/i.test(val)) {
-                    picker.value = val;
-                    applyPrimaryColor(val);
-                    saveColorDebounced(val);
-                }
-            });
-            
-            // --- ZAPIS OIDC ---
             el('save-oidc-btn').onclick = async () => {
                 const payload = {
                     oidc_enabled: el('oidc-toggle').checked,
@@ -367,41 +551,66 @@
                     oidc_client_id: el('oidc-client-id').value,
                     oidc_client_secret: el('oidc-client-secret').value
                 };
-                
                 try {
-                    await fetch('/api/settings', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(payload)
-                    });
+                    await fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
                     log(translations[lang].msg_settings_saved);
-                } catch(e) {
-                    console.error(e);
-                    log(translations[lang].err + "Save failed");
+                } catch(e) { log("Save failed"); }
+            };
+
+            el('save-gdrive-btn').onclick = async () => {
+                const payload = {
+                    gdrive_client_id: el('gd-client-id').value,
+                    gdrive_client_secret: el('gd-client-secret').value,
+                    gdrive_folder_name: el('gd-folder').value,
+                    gdrive_backup_frequency: el('gd-freq').value,
+                    gdrive_backup_time: el('gd-time').value,
+                    gdrive_retention_days: el('gd-retention').value
+                };
+                try {
+                    await fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+                    log(translations[lang].msg_settings_saved);
+                    fetchBackupStatus();
+                } catch(e) { log("Save failed"); }
+            };
+            
+            el('connect-gdrive-btn').onclick = () => {
+                const action = el('connect-gdrive-btn').getAttribute('data-action');
+                if (action === 'disconnect') {
+                    if(!confirm("Czy na pewno chcesz odłączyć konto Google Drive?")) return;
+                    fetch('/api/backup/google/disconnect', { method: 'POST' })
+                    .then(res => res.json())
+                    .then(() => { log("Konto odłączone"); fetchBackupStatus(); })
+                    .catch(e => log(translations[lang].err + "Disconnect failed"));
+                } else {
+                    const payload = {
+                        gdrive_client_id: el('gd-client-id').value,
+                        gdrive_client_secret: el('gd-client-secret').value
+                    };
+                    if(!payload.gdrive_client_id || !payload.gdrive_client_secret) {
+                        log(translations[lang].err + "Wprowadź Client ID i Secret");
+                        return;
+                    }
+                    fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) })
+                    .then(() => { window.location.href = '/api/backup/google/auth'; })
+                    .catch(e => log("Błąd zapisu przed połączeniem"));
                 }
             };
 
-            el('lang-toggle').onclick = () => { 
-                const nextLang = lang === 'pl' ? 'en' : 'pl'; 
-                setLang(nextLang); updateTexts(); 
-                fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ lang: nextLang }) });
+            el('trigger-backup-btn').onclick = async () => {
+                el('trigger-backup-btn').disabled = true;
+                try {
+                    const res = await fetch('/api/backup/google/test', { method: 'POST' });
+                    const data = await res.json();
+                    if(data.status === 'success') log(translations[lang].msg_backup_success);
+                    else log("Błąd backupu: " + data.message);
+                    fetchBackupStatus();
+                } catch(e) { log("Trigger failed"); }
+                el('trigger-backup-btn').disabled = false;
             };
-            el('theme-toggle').onclick = () => {
-                 const next = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-                 document.body.setAttribute('data-theme', next); document.documentElement.setAttribute('data-theme', next);
-                 updateThemeIcon(next); 
-                 fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ theme: next }) });
-            };
-            
-            resetBtn.onclick = () => {
-                 applyPrimaryColor(null); setPrimaryColor(null); localStorage.removeItem('ls_primary_color');
-                 const def = document.body.getAttribute('data-theme') === 'dark' ? '#bb86fc' : '#6200ea';
-                 if(picker) picker.value = def;
-                 if(hexInput) hexInput.value = def;
-                 
-                 fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ primary_color: null }) });
-                 log(translations[lang].msg_color_saved);
-            };
+
+            el('lang-toggle').onclick = () => { const n = lang === 'pl' ? 'en' : 'pl'; setLang(n); updateTexts(); fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ lang: n }) }); };
+            el('theme-toggle').onclick = () => { const n = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; document.body.setAttribute('data-theme', n); updateThemeIcon(n); fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ theme: n }) }); };
+            if(el('reset-color-btn')) el('reset-color-btn').onclick = () => { applyPrimaryColor(null); setPrimaryColor(null); localStorage.removeItem('ls_primary_color'); picker.value = '#6200ea'; el('color-hex').value='#6200ea'; fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ primary_color: null }) }); };
         };
     </script>
 </body>

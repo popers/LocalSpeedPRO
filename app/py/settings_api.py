@@ -32,6 +32,19 @@ def ensure_columns():
             add_if_missing("oidc_client_id", "VARCHAR", "''")
             add_if_missing("oidc_client_secret", "VARCHAR", "''")
             
+            # --- Nowe kolumny Google Drive ---
+            add_if_missing("gdrive_enabled", "BOOLEAN", "0")
+            add_if_missing("gdrive_client_id", "VARCHAR", "''")
+            add_if_missing("gdrive_client_secret", "VARCHAR", "''")
+            add_if_missing("gdrive_folder_name", "VARCHAR", "'LocalSpeed_Backup'")
+            add_if_missing("gdrive_backup_frequency", "INTEGER", "1")
+            add_if_missing("gdrive_backup_time", "VARCHAR", "'04:00'")
+            add_if_missing("gdrive_retention_days", "INTEGER", "7")
+            add_if_missing("gdrive_last_backup", "VARCHAR", "''")
+            add_if_missing("gdrive_status", "VARCHAR", "''")
+            add_if_missing("gdrive_token_json", "VARCHAR", "''")
+
+            
     except Exception as e:
         logger.error(f"Krytyczny błąd migracji (engine): {e}")
 
@@ -39,7 +52,6 @@ def ensure_columns():
 def get_settings(response: Response, db: Session = Depends(get_db)):
     """Pobiera ustawienia."""
     
-    # 1. WYMUSZENIE BRAKU CACHE (Kluczowa poprawka)
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
@@ -54,28 +66,30 @@ def get_settings(response: Response, db: Session = Depends(get_db)):
             db.commit()
             db.refresh(settings)
 
-        # 2. RĘCZNE MAPOWANIE DO SŁOWNIKA
-        # To gwarantuje, że FastAPI zwróci dokładnie te pola, nawet jeśli Pydantic/SQLAlchemy "zgłupieją"
         return {
             "id": settings.id,
             "lang": settings.lang,
             "theme": settings.theme,
             "unit": settings.unit,
             "primary_color": settings.primary_color,
-            # Pola OIDC - jawnie pobierane z obiektu
             "oidc_enabled": settings.oidc_enabled,
             "oidc_discovery_url": settings.oidc_discovery_url,
             "oidc_client_id": settings.oidc_client_id,
-            "oidc_client_secret": settings.oidc_client_secret
+            "oidc_client_secret": settings.oidc_client_secret,
+            
+            # Google Drive fields
+            "gdrive_enabled": settings.gdrive_enabled,
+            "gdrive_client_id": settings.gdrive_client_id,
+            "gdrive_client_secret": settings.gdrive_client_secret,
+            "gdrive_folder_name": settings.gdrive_folder_name,
+            "gdrive_backup_frequency": settings.gdrive_backup_frequency,
+            "gdrive_backup_time": settings.gdrive_backup_time,
+            "gdrive_retention_days": settings.gdrive_retention_days
         }
 
     except Exception as e:
         logger.error(f"Błąd pobierania ustawień: {e}")
-        # Fallback w razie błędu bazy
-        return {
-            "id": 1, "lang": "en", "theme": "dark", 
-            "oidc_enabled": False, "oidc_discovery_url": "", "oidc_client_id": "", "oidc_client_secret": ""
-        }
+        return { "id": 1, "lang": "en", "theme": "dark" }
 
 @router.post("/api/settings")
 async def update_settings(request: Request, db: Session = Depends(get_db)):
@@ -84,8 +98,7 @@ async def update_settings(request: Request, db: Session = Depends(get_db)):
 
     try:
         data = await request.json()
-        logger.info(f"Zapisywanie ustawień: {data}")
-
+        
         settings = db.query(Settings).filter(Settings.id == 1).first()
         if not settings:
             settings = Settings(id=1)
@@ -98,18 +111,19 @@ async def update_settings(request: Request, db: Session = Depends(get_db)):
         if 'primary_color' in data: settings.primary_color = str(data['primary_color'])
         
         # OIDC
-        if 'oidc_enabled' in data: 
-            settings.oidc_enabled = bool(data['oidc_enabled'])
-        if 'oidc_discovery_url' in data: 
-            val = data['oidc_discovery_url']
-            settings.oidc_discovery_url = str(val) if val is not None else ""
-        if 'oidc_client_id' in data: 
-            val = data['oidc_client_id']
-            settings.oidc_client_id = str(val) if val is not None else ""
-        if 'oidc_client_secret' in data: 
-            val = data['oidc_client_secret']
-            settings.oidc_client_secret = str(val) if val is not None else ""
+        if 'oidc_enabled' in data: settings.oidc_enabled = bool(data['oidc_enabled'])
+        if 'oidc_discovery_url' in data: settings.oidc_discovery_url = str(data['oidc_discovery_url'])
+        if 'oidc_client_id' in data: settings.oidc_client_id = str(data['oidc_client_id'])
+        if 'oidc_client_secret' in data: settings.oidc_client_secret = str(data['oidc_client_secret'])
         
+        # Google Drive
+        if 'gdrive_client_id' in data: settings.gdrive_client_id = str(data['gdrive_client_id'])
+        if 'gdrive_client_secret' in data: settings.gdrive_client_secret = str(data['gdrive_client_secret'])
+        if 'gdrive_folder_name' in data: settings.gdrive_folder_name = str(data['gdrive_folder_name'])
+        if 'gdrive_backup_frequency' in data: settings.gdrive_backup_frequency = int(data['gdrive_backup_frequency'])
+        if 'gdrive_backup_time' in data: settings.gdrive_backup_time = str(data['gdrive_backup_time'])
+        if 'gdrive_retention_days' in data: settings.gdrive_retention_days = int(data['gdrive_retention_days'])
+
         db.commit()
         db.refresh(settings)
         return {"status": "updated"}

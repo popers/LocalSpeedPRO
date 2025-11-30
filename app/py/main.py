@@ -12,6 +12,7 @@ from .settings_api import router as settings_router
 from .history_api import router as history_router
 from .speedtest_api import router as speedtest_router
 from .auth import router as auth_router, COOKIE_NAME
+from .backup_api import router as backup_router # NOWY ROUTER
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("LocalSpeed")
@@ -45,15 +46,14 @@ initialize_static_files()
 app = FastAPI(title="LocalSpeed Pro")
 
 # --- WAŻNE: SessionMiddleware Fix ---
-# Stały klucz, aby restart nie wylogowywał w trakcie procesu OIDC
 SECRET_KEY = os.getenv("APP_SECRET", "dev_secret_key_fixed_12345")
 
 app.add_middleware(
     SessionMiddleware, 
     secret_key=SECRET_KEY, 
     max_age=3600,
-    https_only=False, # Zezwól na HTTP (lokalne IP)
-    same_site="lax"   # Wymagane dla redirectów OAuth
+    https_only=False, 
+    same_site="lax"   
 )
 
 app.add_middleware(
@@ -98,6 +98,7 @@ app.include_router(settings_router)
 app.include_router(history_router)
 app.include_router(speedtest_router)
 app.include_router(auth_router)
+app.include_router(backup_router) # Rejestracja
 
 app.mount("/js", StaticFiles(directory=JS_DIR), name="js")
 app.mount("/css", StaticFiles(directory=CSS_DIR), name="css")

@@ -34,6 +34,7 @@ export const translations = {
         msg_unit_mbs: "Zmieniono jednostkę: MB/s",
         msg_color_saved: "Zapisano nowy kolor",
         msg_settings_saved: "Zapisano ustawienia",
+        msg_backup_success: "Kopia zapasowa udana",
 
         // --- MENU ---
         nav_dashboard: "Panel Główny",
@@ -45,13 +46,36 @@ export const translations = {
         settings_appearance: "Wygląd",
         settings_oidc_title: "Logowanie OIDC (SSO)",
         settings_oidc_desc: "Skonfiguruj logowanie przez OpenID Connect (np. Authentik, Keycloak, Google).",
+        settings_backup_title: "Kopia Zapasowa",
+
         lbl_primary_color: "Kolor wiodący",
         lbl_oidc_enable: "Włącz logowanie OIDC",
         lbl_oidc_discovery: "Discovery URL (.well-known):",
         lbl_oidc_client_id: "Client ID:",
         lbl_oidc_secret: "Client Secret:",
-        lbl_oidc_redirect: "Redirect URI (Callback) do wpisania u dostawcy:",
+        lbl_redirect: "Redirect URI (Callback) do wpisania u dostawcy:", // ZMIANA NA GENERYCZNĄ
         btn_reset_color: "Przywróć domyślny",
+
+        // Backup translations
+        backup_download_title: "Pobierz Kopię",
+        backup_download_desc: "Pobierz plik SQL zawierający całą historię pomiarów oraz ustawienia.",
+        btn_download_sql: "POBIERZ .SQL",
+        backup_restore_title: "Przywróć Kopię",
+        backup_restore_warn: "UWAGA: Przywrócenie kopii nadpisze wszystkie obecne dane!",
+        btn_select_file: "Wybierz plik",
+        btn_restore_file: "PRZYWRÓĆ Z PLIKU",
+        no_file: "Brak wybranego pliku",
+
+        gdrive_desc: "Automatycznie wysyłaj kopie zapasowe do folderu na Google Drive.",
+        lbl_folder: "Nazwa folderu (Google Drive):",
+        lbl_retention: "Retencja plików (dni):",
+        lbl_freq: "Częstotliwość (co ile dni):",
+        lbl_time: "Godzina backupu:",
+        btn_save: "Zapisz", // NOWE
+        btn_connect_account: "POŁĄCZ KONTO",
+        btn_disconnect_account: "ODŁĄCZ KONTO",
+        btn_backup_now: "WYŚLIJ TERAZ",
+        help_gdrive_config: "Jak skonfigurować Client ID/Secret?",
 
         // --- LOGIN PAGE ---
         login_header: "LocalSpeed PRO",
@@ -96,6 +120,7 @@ export const translations = {
         msg_unit_mbs: "Unit changed: MB/s",
         msg_color_saved: "New color saved",
         msg_settings_saved: "Settings saved",
+        msg_backup_success: "Backup successful",
 
         // --- MENU ---
         nav_dashboard: "Dashboard",
@@ -107,13 +132,36 @@ export const translations = {
         settings_appearance: "Appearance",
         settings_oidc_title: "OIDC Login (SSO)",
         settings_oidc_desc: "Configure OpenID Connect login (e.g. Authentik, Keycloak, Google).",
+        settings_backup_title: "Backup",
+
         lbl_primary_color: "Primary Color",
         lbl_oidc_enable: "Enable OIDC Login",
         lbl_oidc_discovery: "Discovery URL (.well-known):",
         lbl_oidc_client_id: "Client ID:",
         lbl_oidc_secret: "Client Secret:",
-        lbl_oidc_redirect: "Redirect URI (Callback) to register with provider:",
+        lbl_redirect: "Redirect URI (Callback) to register with provider:",
         btn_reset_color: "Reset to default",
+
+        // Backup translations
+        backup_download_title: "Download Backup",
+        backup_download_desc: "Download SQL file containing all measurement history and settings.",
+        btn_download_sql: "DOWNLOAD .SQL",
+        backup_restore_title: "Restore Backup",
+        backup_restore_warn: "WARNING: Restoring a backup will overwrite all current data!",
+        btn_select_file: "Select file",
+        btn_restore_file: "RESTORE FROM FILE",
+        no_file: "No file selected",
+
+        gdrive_desc: "Automatically send backups to a Google Drive folder.",
+        lbl_folder: "Folder Name (Google Drive):",
+        lbl_retention: "File Retention (days):",
+        lbl_freq: "Frequency (every X days):",
+        lbl_time: "Backup Time:",
+        btn_save: "Save",
+        btn_connect_account: "CONNECT ACCOUNT",
+        btn_disconnect_account: "DISCONNECT ACCOUNT",
+        btn_backup_now: "BACKUP NOW",
+        help_gdrive_config: "How to configure Client ID/Secret?",
 
         // --- LOGIN PAGE ---
         login_header: "LocalSpeed PRO",

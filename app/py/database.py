@@ -11,7 +11,8 @@ logger = logging.getLogger("LocalSpeedDB")
 
 # --- KONFIGURACJA ŚCIEŻEK ---
 BASE_DIR = "/app"
-DB_PATH = os.path.join(BASE_DIR, "speedtest_final.db") 
+DB_NAME = "speedtest_final.db"
+DB_PATH = os.path.join(BASE_DIR, DB_NAME) 
 
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
 
@@ -40,11 +41,23 @@ class Settings(Base):
     primary_color = Column(String, default="#6200ea")
     
     # --- Konfiguracja OIDC ---
-    # SQLite przechowuje Boolean jako 0/1
     oidc_enabled = Column(Boolean, default=False)
     oidc_discovery_url = Column(String, default="")
     oidc_client_id = Column(String, default="")
     oidc_client_secret = Column(String, default="")
+
+    # --- Konfiguracja Google Drive Backup ---
+    gdrive_enabled = Column(Boolean, default=False)
+    gdrive_client_id = Column(String, default="")
+    gdrive_client_secret = Column(String, default="")
+    gdrive_folder_name = Column(String, default="LocalSpeed_Backup")
+    gdrive_backup_frequency = Column(Integer, default=1) # co ile dni
+    gdrive_backup_time = Column(String, default="04:00")
+    gdrive_retention_days = Column(Integer, default=7)
+    gdrive_last_backup = Column(String, default="") # data ostatniego backupu
+    gdrive_status = Column(String, default="") # np. "Success", "Error: ..."
+    # Tokeny przechowujemy jako JSON string
+    gdrive_token_json = Column(String, default="")
 
 # Tworzenie tabel
 try:
