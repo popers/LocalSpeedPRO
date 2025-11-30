@@ -39,7 +39,6 @@
             document.documentElement.setAttribute('data-theme', savedTheme);
             
             const savedColor = localStorage.getItem('ls_primary_color');
-            // POPRAWKA: Sprawdzamy czy nie jest "null"
             if(savedColor && savedColor !== 'null') {
                 document.documentElement.style.setProperty('--primary', savedColor);
                 const rgb = hexToRgb(savedColor);
@@ -58,10 +57,11 @@
                 <span class="material-icons">menu</span>
             </button>
 
-            <div class="logo">
+            <!-- ZMIANA: Klikalne Logo (Link do /) -->
+            <a href="/" class="logo" style="text-decoration: none;">
                 <span class="material-icons">speed</span>
                 LocalSpeed <small style="font-size: 0.6em; opacity: 0.7; margin-left: 5px;">PRO</small>
-            </div>
+            </a>
         </div>
 
         <div class="controls">
@@ -149,6 +149,7 @@
             </div>
 
             <div class="bottom-section">
+                <!-- ID history-section jest celem linku z settings -->
                 <div class="history-container" id="history-section">
                     <div class="history-header">
                         <h3 data-key="history_title">Historia Pomiarów</h3>

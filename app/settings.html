@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>LocalSpeed Pro - Settings</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -30,7 +30,6 @@
             const savedTheme = localStorage.getItem('ls_theme') || 'dark';
             document.documentElement.setAttribute('data-theme', savedTheme);
             const savedColor = localStorage.getItem('ls_primary_color');
-            // POPRAWKA: Sprawdzamy czy nie jest "null"
             if(savedColor && savedColor !== 'null') {
                 document.documentElement.style.setProperty('--primary', savedColor);
                 const rgb = hexToRgb(savedColor);
@@ -49,10 +48,10 @@
                 <span class="material-icons">menu</span>
             </button>
 
-            <div class="logo">
+            <a href="/" class="logo" style="text-decoration: none;">
                 <span class="material-icons">speed</span>
                 LocalSpeed <small style="font-size: 0.6em; opacity: 0.7; margin-left: 5px;">PRO</small>
-            </div>
+            </a>
         </div>
 
         <div class="controls">
@@ -76,10 +75,14 @@
                     <span class="material-icons">dashboard</span>
                     <span data-key="nav_dashboard">Panel Główny</span>
                 </a>
-                <a href="/#history-section" class="nav-link" id="nav-history">
+                
+                <!-- ZMIANA: Zamiast #history-section używamy parametru ?section=history -->
+                <!-- To pozwala JS na index.html przejąć kontrolę nad przewijaniem -->
+                <a href="/?section=history" class="nav-link" id="nav-history">
                     <span class="material-icons">history</span>
                     <span data-key="nav_measurements">Pomiary</span>
                 </a>
+                
                 <a href="/settings.html" class="nav-link active" id="nav-settings">
                     <span class="material-icons">settings</span>
                     <span data-key="nav_settings">Ustawienia</span>
@@ -131,6 +134,14 @@
         import { loadSettings, saveSettings } from '/js/data_sync.js';
         import { translations } from '/js/config.js';
 
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
         function initMenu() {
             const sidebar = el('app-sidebar');
             const overlay = el('sidebar-overlay');
@@ -159,9 +170,7 @@
 
         window.onload = async () => {
             initMenu();
-            
             await loadSettings();
-            
             updateThemeIcon(document.body.getAttribute('data-theme'));
             updateTexts();
 
@@ -198,8 +207,6 @@
             const resetBtn = el('reset-color-btn');
 
             const savedColor = localStorage.getItem('ls_primary_color');
-            
-            // POPRAWKA: Traktuj "null" jako brak
             if (savedColor && savedColor !== 'null') {
                 picker.value = savedColor;
                 hexInput.value = savedColor;
@@ -209,54 +216,40 @@
                 hexInput.value = def;
             }
 
+            const saveColorDebounced = debounce((newColor) => {
+                setPrimaryColor(newColor);
+                saveSettings(null, null, null, newColor);
+                log(translations[lang].msg_color_saved);
+            }, 800);
+
             picker.addEventListener('input', (e) => {
                 const newColor = e.target.value;
                 hexInput.value = newColor;
                 applyPrimaryColor(newColor);
+                saveColorDebounced(newColor);
             });
 
             picker.addEventListener('change', (e) => {
-                const newColor = e.target.value;
-                setPrimaryColor(newColor);
-                saveSettings(null, null, null, newColor);
-                log(translations[lang].msg_color_saved);
+                saveColorDebounced(e.target.value);
             });
 
             hexInput.addEventListener('input', (e) => {
                 let val = e.target.value;
-                if (!val.startsWith('#')) {
-                    val = '#' + val;
-                }
+                if (!val.startsWith('#')) val = '#' + val;
                 if (/^#[0-9A-F]{6}$/i.test(val)) {
                     picker.value = val;
                     applyPrimaryColor(val);
-                }
-            });
-
-            hexInput.addEventListener('change', (e) => {
-                let val = e.target.value;
-                if (!val.startsWith('#')) val = '#' + val;
-                
-                if (/^#[0-9A-F]{6}$/i.test(val)) {
-                    setPrimaryColor(val);
-                    saveSettings(null, null, null, val);
-                    log(translations[lang].msg_color_saved);
-                } else {
-                    hexInput.value = picker.value;
+                    saveColorDebounced(val);
                 }
             });
 
             resetBtn.onclick = () => {
                 const defColor = getThemeDefaultColor();
-                
                 picker.value = defColor;
                 hexInput.value = defColor;
-                
                 applyPrimaryColor(null);
                 setPrimaryColor(null);
-                // POPRAWKA: Usuwamy, żeby nie został string "null"
                 localStorage.removeItem('ls_primary_color');
-                
                 saveSettings(null, null, null, null); 
                 log(translations[lang].msg_color_saved);
             };

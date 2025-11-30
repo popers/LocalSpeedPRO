@@ -10,6 +10,15 @@
     flex-direction: column;
 }
 
+/* KLUCZOWA ZMIANA: scroll-margin-top 
+   To sprawia, że gdy wchodzisz z linku /#history-section, 
+   przeglądarka zatrzymuje się 90px przed elementem.
+   Header ma 70px, więc dajemy 90px, aby był ładny odstęp.
+*/
+#history-section {
+    scroll-margin-top: 90px;
+}
+
 /* Header Historii z przyciskami */
 .history-header {
     display: flex;
@@ -88,12 +97,12 @@ th {
     text-align: left; 
     padding: 10px; 
     border-bottom: 2px solid var(--border); 
-    color: var(--text); /* Zmieniono z primary na text, kolor aktywny bedzie nizej */
+    color: var(--text); 
     background: var(--surface); 
     cursor: pointer; 
     user-select: none;
     transition: background 0.2s;
-    white-space: nowrap; /* Zapobiega łamaniu tekstu w nagłówku */
+    white-space: nowrap; 
 }
 
 th:hover {
@@ -115,28 +124,25 @@ input[type="checkbox"] {
     cursor: pointer;
 }
 
-/* LOGIKA IKON SORTOWANIA - POPRAWIONA */
+/* LOGIKA IKON SORTOWANIA */
 th .sort-icon {
-    font-size: 18px; /* Nieco większa ikona */
+    font-size: 18px; 
     vertical-align: middle;
     margin-left: 5px;
-    opacity: 0.2; /* Domyślnie bardzo blada (unfold_more) */
+    opacity: 0.2; 
     transition: opacity 0.2s, color 0.2s;
     display: inline-block;
 }
 
-/* Klasa dodawana przez JS gdy kolumna jest aktywna */
 th.sort-active {
-    color: var(--primary); /* Kolor tekstu nagłówka */
+    color: var(--primary); 
 }
 
 th.sort-active .sort-icon {
-    opacity: 1; /* Pełna widoczność */
+    opacity: 1; 
     color: var(--primary);
     font-weight: bold;
 }
-
-/* Usunięto stare style z transform rotate i ::after content */
 
 td { padding: 10px; border-bottom: 1px solid var(--border); }
 tr:last-child td { border-bottom: none; }

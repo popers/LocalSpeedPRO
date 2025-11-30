@@ -4,6 +4,7 @@
     max-width: 800px;
     width: 100%;
     margin: 0 auto;
+    box-sizing: border-box; /* Ważne, aby padding nie rozpychał szerokości */
 }
 
 /* Usunięto .settings-header */
@@ -12,7 +13,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1.5rem;
-    margin-top: 1rem; /* Dodano margines górny, bo usunęliśmy nagłówek */
+    margin-top: 1rem;
 }
 
 /* KAFELKA USTAWIEŃ */
@@ -43,7 +44,7 @@
 
 .card-header .material-icons {
     color: var(--primary);
-    background: rgba(var(--primary-rgb), 0.1); /* ZMIANA: Dynamiczne tło ikony */
+    background: rgba(var(--primary-rgb), 0.1);
     padding: 8px;
     border-radius: 50%;
 }
@@ -60,6 +61,7 @@
     align-items: center;
     gap: 15px;
     margin-top: 10px;
+    flex-wrap: wrap; /* Pozwala na zawijanie na bardzo małych ekranach */
 }
 
 .color-preview {
@@ -71,7 +73,7 @@
     position: relative;
     overflow: hidden;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    flex-shrink: 0; /* Zapobiega zmniejszaniu się kółka */
+    flex-shrink: 0;
 }
 
 input[type="color"] {
@@ -86,7 +88,6 @@ input[type="color"] {
     margin: 0;
 }
 
-/* ZMIANA: Stylizacja pola input dla HEX */
 input.color-value {
     font-family: 'Roboto Mono', monospace;
     font-size: 1rem;
@@ -119,4 +120,41 @@ input.color-value:focus {
 .btn-secondary:hover {
     background: rgba(128,128,128,0.1);
     border-color: var(--primary);
+}
+
+/* --- RESPANSYWNOŚĆ (MOBILE) --- */
+@media (max-width: 600px) {
+    .settings-container {
+        padding: 1rem; /* Mniejszy padding na mobile */
+    }
+
+    .settings-grid {
+        grid-template-columns: 1fr; /* Jedna kolumna na telefonach */
+        gap: 1rem;
+    }
+
+    .setting-card {
+        padding: 1.2rem;
+    }
+
+    .card-header {
+        font-size: 1rem;
+    }
+    
+    /* Zwiększenie elementów dotykowych */
+    .color-preview {
+        width: 60px;
+        height: 60px;
+    }
+    
+    input.color-value {
+        width: 100%; /* Rozciągnij input na mobile */
+        max-width: 120px;
+    }
+    
+    .btn-secondary {
+        width: 100%;
+        text-align: center;
+        padding: 12px; /* Łatwiejsze klikanie */
+    }
 }

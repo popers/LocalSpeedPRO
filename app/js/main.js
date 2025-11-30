@@ -3,7 +3,7 @@ import {
     log, 
     setLang, 
     setCurrentUnit,
-    setPrimaryColor, // DODANO: Import setPrimaryColor
+    setPrimaryColor,
     lang, 
     currentUnit, 
     lastResultDown, 
@@ -161,20 +161,18 @@ function initMenu() {
         };
     }
     
+    // Jeśli załadowaliśmy się na stronie głównej, oznaczamy Dashboard jako aktywny
     if(navDashboard) navDashboard.classList.add('active');
 }
 
 window.onload = () => {
     const savedTheme = localStorage.getItem('ls_theme') || 'dark';
     document.body.setAttribute('data-theme', savedTheme);
-    // Ustawienie atrybutu też na HTML dla spójności
     document.documentElement.setAttribute('data-theme', savedTheme);
     
     setLang(localStorage.getItem('ls_lang') || 'en');
     setCurrentUnit(localStorage.getItem('ls_unit') || 'mbps');
     
-    // DODANO: Jawne ustawienie koloru przy starcie JS
-    // To naprawia sytuację, jeśli skrypt w <head> zawiódł
     const savedColor = localStorage.getItem('ls_primary_color');
     if (savedColor) {
         setPrimaryColor(savedColor);
@@ -190,11 +188,35 @@ window.onload = () => {
     loadSettings().then(() => loadHistory());
     
     const urlParams = new URLSearchParams(window.location.search);
+    
+    // Obsługa komunikatu o zalogowaniu
     if (urlParams.get('login') === 'success') {
         setTimeout(() => {
             log(translations[lang].msg_login_success);
         }, 500);
         window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // --- NOWE: OBSŁUGA PRZEWIJANIA DO SEKCJI PO ZAŁADOWANIU ---
+    // Sprawdzamy czy w URL jest ?section=history
+    if (urlParams.get('section') === 'history') {
+        const navHistory = el('nav-history');
+        const navDashboard = el('nav-dashboard');
+        
+        // Ustawiamy aktywny link w menu
+        if (navHistory) navHistory.classList.add('active');
+        if (navDashboard) navDashboard.classList.remove('active');
+
+        // Czekamy 500ms aby strona się ułożyła (wykresy, responsywność)
+        setTimeout(() => {
+            const section = el('history-section');
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth' });
+                
+                // Czyścimy URL aby po odświeżeniu nie skakało znowu
+                window.history.replaceState({}, document.title, "/");
+            }
+        }, 500);
     }
 
     el('start-btn').onclick = startTest;
