@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalSpeed Pro - Settings</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/header.css">
+    <link rel="stylesheet" href="/css/sidebar.css">
+    <link rel="stylesheet" href="/css/toast.css">
+    <link rel="stylesheet" href="/css/settings.css">
+
+    <script>
+        (function() {
+            function hexToRgb(hex) {
+                let c;
+                if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+                    c= hex.substring(1).split('');
+                    if(c.length== 3){
+                        c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+                    }
+                    c= '0x'+c.join('');
+                    return [(c>>16)&255, (c>>8)&255, c&255].join(', ');
+                }
+                return null;
+            }
+            const savedTheme = localStorage.getItem('ls_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            const savedColor = localStorage.getItem('ls_primary_color');
+            // POPRAWKA: Sprawdzamy czy nie jest "null"
+            if(savedColor && savedColor !== 'null') {
+                document.documentElement.style.setProperty('--primary', savedColor);
+                const rgb = hexToRgb(savedColor);
+                if(rgb) document.documentElement.style.setProperty('--primary-rgb', rgb);
+            }
+        })();
+    </script>
+</head>
+<body>
+
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <header>
+        <div class="header-left">
+            <button id="menu-toggle" class="menu-toggle" aria-label="Menu">
+                <span class="material-icons">menu</span>
+            </button>
+
+            <div class="logo">
+                <span class="material-icons">speed</span>
+                LocalSpeed <small style="font-size: 0.6em; opacity: 0.7; margin-left: 5px;">PRO</small>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="lang-toggle" class="btn-icon" aria-label="Język"><span>EN</span></button>
+            <button id="theme-toggle" class="btn-icon" aria-label="Motyw"><span class="material-icons" id="theme-icon">dark_mode</span></button>
+            <button id="logout-btn" class="btn-icon" aria-label="Wyloguj">
+                <span class="material-icons">logout</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="app-layout">
+        
+        <aside class="sidebar" id="app-sidebar">
+            <div class="sidebar-mobile-header">
+                <span class="material-icons">speed</span>
+                LocalSpeed PRO
+            </div>
+            <nav>
+                <a href="/" class="nav-link" id="nav-dashboard">
+                    <span class="material-icons">dashboard</span>
+                    <span data-key="nav_dashboard">Panel Główny</span>
+                </a>
+                <a href="/#history-section" class="nav-link" id="nav-history">
+                    <span class="material-icons">history</span>
+                    <span data-key="nav_measurements">Pomiary</span>
+                </a>
+                <a href="/settings.html" class="nav-link active" id="nav-settings">
+                    <span class="material-icons">settings</span>
+                    <span data-key="nav_settings">Ustawienia</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main>
+            <div class="settings-container">
+                <div class="settings-grid">
+                    
+                    <!-- Kafelka: Wygląd -->
+                    <div class="setting-card">
+                        <div class="card-header">
+                            <span class="material-icons">palette</span>
+                            <span data-key="settings_appearance">Wygląd</span>
+                        </div>
+                        <div class="card-body">
+                            
+                            <!-- Color Picker -->
+                            <div>
+                                <label style="font-size: 0.9rem; opacity: 0.8;" data-key="lbl_primary_color">Kolor wiodący</label>
+                                <div class="color-picker-wrapper">
+                                    <div class="color-preview" id="color-preview" title="Wybierz kolor">
+                                        <input type="color" id="primary-color-picker" value="#6200ea">
+                                    </div>
+                                    <input type="text" class="color-value" id="color-hex" value="#6200ea" maxlength="7">
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 10px;">
+                                <button id="reset-color-btn" class="btn-secondary" data-key="btn_reset_color">
+                                    Przywróć domyślny
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { el, log, setLang, lang, updateThemeIcon, updateTexts, applyPrimaryColor, setPrimaryColor } from '/js/utils.js';
+        import { loadSettings, saveSettings } from '/js/data_sync.js';
+        import { translations } from '/js/config.js';
+
+        function initMenu() {
+            const sidebar = el('app-sidebar');
+            const overlay = el('sidebar-overlay');
+            const menuToggle = el('menu-toggle');
+
+            function closeMenu() {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('active');
+                document.body.classList.remove('menu-open');
+            }
+            function openMenu() {
+                sidebar.classList.add('open');
+                overlay.classList.add('active');
+                document.body.classList.add('menu-open');
+            }
+            if(menuToggle) menuToggle.onclick = () => {
+                if (sidebar.classList.contains('open')) closeMenu(); else openMenu();
+            };
+            if(overlay) overlay.onclick = closeMenu;
+        }
+
+        function getThemeDefaultColor() {
+            const isDark = document.body.getAttribute('data-theme') === 'dark';
+            return isDark ? '#bb86fc' : '#6200ea';
+        }
+
+        window.onload = async () => {
+            initMenu();
+            
+            await loadSettings();
+            
+            updateThemeIcon(document.body.getAttribute('data-theme'));
+            updateTexts();
+
+            el('logout-btn').onclick = async () => {
+                await fetch('/api/logout', { method: 'POST' });
+                window.location.href = '/login.html?logout=true';
+            };
+
+            el('lang-toggle').onclick = () => { 
+                const nextLang = lang === 'pl' ? 'en' : 'pl'; 
+                setLang(nextLang);
+                updateTexts();
+                saveSettings(nextLang, null, null, null);
+            };
+
+            el('theme-toggle').onclick = () => { 
+                const current = document.body.getAttribute('data-theme');
+                const next = current === 'dark' ? 'light' : 'dark';
+                document.body.setAttribute('data-theme', next);
+                document.documentElement.setAttribute('data-theme', next);
+                updateThemeIcon(next);
+                
+                if (!localStorage.getItem('ls_primary_color') || localStorage.getItem('ls_primary_color') === 'null') {
+                    const defColor = next === 'dark' ? '#bb86fc' : '#6200ea';
+                    el('primary-color-picker').value = defColor;
+                    el('color-hex').value = defColor;
+                }
+                
+                saveSettings(null, next, null, null);
+            };
+
+            const picker = el('primary-color-picker');
+            const hexInput = el('color-hex');
+            const resetBtn = el('reset-color-btn');
+
+            const savedColor = localStorage.getItem('ls_primary_color');
+            
+            // POPRAWKA: Traktuj "null" jako brak
+            if (savedColor && savedColor !== 'null') {
+                picker.value = savedColor;
+                hexInput.value = savedColor;
+            } else {
+                const def = getThemeDefaultColor();
+                picker.value = def; 
+                hexInput.value = def;
+            }
+
+            picker.addEventListener('input', (e) => {
+                const newColor = e.target.value;
+                hexInput.value = newColor;
+                applyPrimaryColor(newColor);
+            });
+
+            picker.addEventListener('change', (e) => {
+                const newColor = e.target.value;
+                setPrimaryColor(newColor);
+                saveSettings(null, null, null, newColor);
+                log(translations[lang].msg_color_saved);
+            });
+
+            hexInput.addEventListener('input', (e) => {
+                let val = e.target.value;
+                if (!val.startsWith('#')) {
+                    val = '#' + val;
+                }
+                if (/^#[0-9A-F]{6}$/i.test(val)) {
+                    picker.value = val;
+                    applyPrimaryColor(val);
+                }
+            });
+
+            hexInput.addEventListener('change', (e) => {
+                let val = e.target.value;
+                if (!val.startsWith('#')) val = '#' + val;
+                
+                if (/^#[0-9A-F]{6}$/i.test(val)) {
+                    setPrimaryColor(val);
+                    saveSettings(null, null, null, val);
+                    log(translations[lang].msg_color_saved);
+                } else {
+                    hexInput.value = picker.value;
+                }
+            });
+
+            resetBtn.onclick = () => {
+                const defColor = getThemeDefaultColor();
+                
+                picker.value = defColor;
+                hexInput.value = defColor;
+                
+                applyPrimaryColor(null);
+                setPrimaryColor(null);
+                // POPRAWKA: Usuwamy, żeby nie został string "null"
+                localStorage.removeItem('ls_primary_color');
+                
+                saveSettings(null, null, null, null); 
+                log(translations[lang].msg_color_saved);
+            };
+        };
+    </script>
+</body>
+</html>

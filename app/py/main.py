@@ -56,11 +56,8 @@ app.add_middleware(
 )
 
 # --- MIDDLEWARE AUTORYZACJI ---
-# Sprawdza każde żądanie. Jeśli nie jest do zasobów statycznych lub API logowania,
-# a użytkownik nie ma ciasteczka -> przekieruj do /login.html
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
-    # Ścieżki publiczne (statyczne pliki, login, favicon itp.)
     public_paths = [
         "/login.html", 
         "/api/login", 
@@ -68,33 +65,24 @@ async def auth_middleware(request: Request, call_next):
         "/js", 
         "/favicon.ico"
     ]
-    
     path = request.url.path
-    
-    # Jeśli ścieżka zaczyna się od publicznych prefixów, przepuść
     is_public = any(path.startswith(p) for p in public_paths)
     
     if is_public:
         return await call_next(request)
     
-    # Sprawdzenie ciasteczka
     token = request.cookies.get(COOKIE_NAME)
     if token != "authorized":
-        # Jeśli to zapytanie API, zwróć 401, jeśli przeglądarka -> redirect
         if path.startswith("/api"):
-             # API Auth Error handle w JS obsłuży to
              pass 
         else:
              return RedirectResponse("/login.html")
              
     response = await call_next(request)
-    
-    # Jeśli API zwróci 401 (Unauthorized), upewnij się, że usuwamy ciastko (opcjonalne)
     if response.status_code == 401:
         response.delete_cookie(COOKIE_NAME)
         
     return response
-
 
 app.include_router(settings_router)
 app.include_router(history_router)
@@ -107,6 +95,11 @@ app.mount("/css", StaticFiles(directory=CSS_DIR), name="css")
 @app.get("/")
 async def read_index(): 
     return FileResponse(os.path.join(BASE_DIR, 'index.html'))
+
+# NOWY ROUTE: Ustawienia
+@app.get("/settings.html")
+async def read_settings():
+    return FileResponse(os.path.join(BASE_DIR, 'settings.html'))
 
 @app.get("/login.html")
 async def read_login():

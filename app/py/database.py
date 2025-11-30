@@ -30,15 +30,17 @@ class SpeedResult(Base):
     ping = Column(Float)
     download = Column(Float)
     upload = Column(Float)
-    lang = Column(String, default="en") # ZMIANA: Domyślnie angielski dla wyników (jeśli nie podano)
+    lang = Column(String, default="en") 
     theme = Column(String, default="dark")
 
 class Settings(Base):
     __tablename__ = "settings"
     id = Column(Integer, primary_key=True, index=True)
-    lang = Column(String, default="en") # ZMIANA: Domyślnie angielski w bazie
+    lang = Column(String, default="en") 
     theme = Column(String, default="dark") 
-    unit = Column(String, default="mbps") # 'mbps' lub 'mbs'
+    unit = Column(String, default="mbps")
+    # NOWE POLE: Kolor wiodący (Hex code, np. #6200ea)
+    primary_color = Column(String, default="#6200ea")
 
 # Tworzenie tabel
 try:

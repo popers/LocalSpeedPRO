@@ -1,4 +1,4 @@
-import { el, getUnitLabel, lang, currentUnit, updateTexts } from './utils.js';
+import { el, getUnitLabel, lang, currentUnit, updateTexts, getPrimaryColor, hexToRgba } from './utils.js';
 import { translations } from './config.js';
 
 let gauge = null; 
@@ -33,7 +33,10 @@ export function initGauge() {
     const isDark = document.body.getAttribute('data-theme') === 'dark';
     const tickColor = isDark ? '#eeeeee' : '#2d3436'; 
     
-    // Jeśli gauge już istnieje i nie ma potrzeby przerysowywania, tylko aktualizujemy kolory/rozmiar
+    // ZMIANA: Pobieramy aktualny kolor wiodący
+    const mainColor = getPrimaryColor();
+    
+    // Jeśli gauge już istnieje, aktualizujemy go
     if (gauge) {
         gauge.update({
             width: size,
@@ -42,8 +45,14 @@ export function initGauge() {
             colorMinorTicks: tickColor,
             colorTitle: tickColor,
             colorUnits: tickColor,
-            colorNumbers: tickColor
+            colorNumbers: tickColor,
+            // Aktualizacja kolorów igły przy zmianie motywu/koloru
+            colorNeedle: mainColor,
+            colorNeedleEnd: mainColor
         });
+        // Musimy wymusić przeliczenie highlights, bo kolor mógł się zmienić
+        // Wywołujemy checkGaugeRange z aktualną wartością
+        checkGaugeRange(gauge.value, true);
         return; 
     }
 
@@ -52,15 +61,23 @@ export function initGauge() {
         ? ["0", "25", "50", "75", "100", "125"]
         : ["0", "200", "400", "600", "800", "1000"];
 
-    // ZMIANA: Dynamiczne opacity dla highlights.
-    // W trybie jasnym (isDark=false) zwiększamy opacity, aby kolory nie były wyblakłe.
+    // Opacity dla stref
     const alpha1 = isDark ? 0.1 : 0.15;
     const alpha2 = isDark ? 0.3 : 0.4;
     const alpha3 = isDark ? 0.6 : 0.8;
 
+    // ZMIANA: Używamy hexToRgba z aktualnym kolorem
     let highlights = (currentUnit === 'mbs') 
-        ? [ { from: 0, to: 50, color: `rgba(98, 0, 234, ${alpha1})` }, { from: 50, to: 100, color: `rgba(98, 0, 234, ${alpha2})` }, { from: 100, to: 125, color: `rgba(98, 0, 234, ${alpha3})` } ]
-        : [ { from: 0, to: 400, color: `rgba(98, 0, 234, ${alpha1})` }, { from: 400, to: 800, color: `rgba(98, 0, 234, ${alpha2})` }, { from: 800, to: 1000, color: `rgba(98, 0, 234, ${alpha3})` } ];
+        ? [ 
+            { from: 0, to: 50, color: hexToRgba(mainColor, alpha1) }, 
+            { from: 50, to: 100, color: hexToRgba(mainColor, alpha2) }, 
+            { from: 100, to: 125, color: hexToRgba(mainColor, alpha3) } 
+          ]
+        : [ 
+            { from: 0, to: 400, color: hexToRgba(mainColor, alpha1) }, 
+            { from: 400, to: 800, color: hexToRgba(mainColor, alpha2) }, 
+            { from: 800, to: 1000, color: hexToRgba(mainColor, alpha3) } 
+          ];
 
     gauge = new RadialGauge({
         renderTo: 'speed-gauge',
@@ -85,8 +102,9 @@ export function initGauge() {
         borders: false,
         needleType: "arrow",
         needleWidth: 4,
-        colorNeedle: "#6200ea",
-        colorNeedleEnd: "#6200ea",
+        // ZMIANA: Dynamiczny kolor igły
+        colorNeedle: mainColor,
+        colorNeedleEnd: mainColor,
         animationDuration: 100, 
         animationRule: "linear",
         fontValue: "Roboto",
@@ -99,7 +117,6 @@ export function initGauge() {
 }
 
 export function reloadGauge() {
-    // ZAPAMIĘTANIE WARTOŚCI: Jeśli test trwa (wartość > 0), zapamiętaj ją
     let savedValue = 0;
     if (gauge) {
         savedValue = gauge.value;
@@ -116,38 +133,66 @@ export function reloadGauge() {
     gaugeScaled = false; 
     initGauge();
 
-    // PRZYWRÓCENIE WARTOŚCI: Jeśli była jakaś wartość, ustaw ją z powrotem i sprawdź skalę
     if (savedValue > 0 && gauge) {
-        checkGaugeRange(savedValue); // Upewnij się, że skala jest odpowiednia dla starej wartości
+        checkGaugeRange(savedValue, true); 
         gauge.value = savedValue;
     }
 }
 
-// --- SKALOWANIE GAUGE DLA WYSOKICH PRĘDKOŚCI ---
-export function checkGaugeRange(speedMbps) {
+// ZMIANA: Dodano parametr forceUpdate do wymuszenia odświeżenia kolorów
+export function checkGaugeRange(speedMbps, forceUpdate = false) {
     if (!gauge) return;
     let val = speedMbps;
     if (currentUnit === 'mbs') val = speedMbps / 8;
 
     let threshold = (currentUnit === 'mbs') ? 118 : 950;
     
-    if (val > threshold && !gaugeScaled) {
-        // Przy skalowaniu również musimy uwzględnić motyw dla nowych highlights
+    // Jeśli przekraczamy próg LUB wymuszamy update (np. po zmianie koloru)
+    if ((val > threshold && !gaugeScaled) || forceUpdate) {
         const isDark = document.body.getAttribute('data-theme') === 'dark';
         const alpha1 = isDark ? 0.1 : 0.15;
         const alpha2 = isDark ? 0.3 : 0.4;
         const alpha3 = isDark ? 0.6 : 0.8;
-
-        let newMax = (currentUnit === 'mbs') ? 375 : 3000;
-        let newTicks = (currentUnit === 'mbs') 
-            ? ["0", "50", "100", "150", "200", "250", "300", "375"]
-            : ["0", "500", "1000", "1500", "2000", "2500", "3000"];
         
-        let newHighlights = (currentUnit === 'mbs')
-            ? [ { from: 0, to: 125, color: `rgba(98, 0, 234, ${alpha1})` }, { from: 125, to: 250, color: `rgba(98, 0, 234, ${alpha2})` }, { from: 250, to: 375, color: `rgba(98, 0, 234, ${alpha3})` } ]
-            : [ { from: 0, to: 1000, color: `rgba(98, 0, 234, ${alpha1})` }, { from: 1000, to: 2000, color: `rgba(98, 0, 234, ${alpha2})` }, { from: 2000, to: 3000, color: `rgba(98, 0, 234, ${alpha3})` } ];
+        // ZMIANA: Pobieramy kolor
+        const mainColor = getPrimaryColor();
+
+        // Ustalamy zakresy (zwiększone jeśli gaugeScaled lub val > threshold)
+        // Jeśli forceUpdate=true i nie jesteśmy przeskalowani (mała prędkość), używamy standardowych zakresów
+        // Jeśli forceUpdate=true i jesteśmy przeskalowani, używamy dużych.
+        
+        let useHighRange = gaugeScaled || (val > threshold);
+        
+        let newMax, newTicks, newHighlights;
+
+        if (useHighRange) {
+             newMax = (currentUnit === 'mbs') ? 375 : 3000;
+             newTicks = (currentUnit === 'mbs') 
+                ? ["0", "50", "100", "150", "200", "250", "300", "375"]
+                : ["0", "500", "1000", "1500", "2000", "2500", "3000"];
+             newHighlights = (currentUnit === 'mbs')
+                ? [ 
+                    { from: 0, to: 125, color: hexToRgba(mainColor, alpha1) }, 
+                    { from: 125, to: 250, color: hexToRgba(mainColor, alpha2) }, 
+                    { from: 250, to: 375, color: hexToRgba(mainColor, alpha3) } 
+                  ]
+                : [ 
+                    { from: 0, to: 1000, color: hexToRgba(mainColor, alpha1) }, 
+                    { from: 1000, to: 2000, color: hexToRgba(mainColor, alpha2) }, 
+                    { from: 2000, to: 3000, color: hexToRgba(mainColor, alpha3) } 
+                  ];
+             gaugeScaled = true;
+        } else {
+            // Standardowy zakres (dla forceUpdate przy małej prędkości)
+            newMax = (currentUnit === 'mbs') ? 125 : 1000;
+            newTicks = (currentUnit === 'mbs') 
+                ? ["0", "25", "50", "75", "100", "125"]
+                : ["0", "200", "400", "600", "800", "1000"];
+            newHighlights = (currentUnit === 'mbs') 
+                ? [ { from: 0, to: 50, color: hexToRgba(mainColor, alpha1) }, { from: 50, to: 100, color: hexToRgba(mainColor, alpha2) }, { from: 100, to: 125, color: hexToRgba(mainColor, alpha3) } ]
+                : [ { from: 0, to: 400, color: hexToRgba(mainColor, alpha1) }, { from: 400, to: 800, color: hexToRgba(mainColor, alpha2) }, { from: 800, to: 1000, color: hexToRgba(mainColor, alpha3) } ];
+        }
 
         gauge.update({ maxValue: newMax, majorTicks: newTicks, highlights: newHighlights });
-        gaugeScaled = true; 
     }
 }

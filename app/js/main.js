@@ -2,7 +2,8 @@ import {
     el, 
     log, 
     setLang, 
-    setCurrentUnit, 
+    setCurrentUnit,
+    setPrimaryColor, // DODANO: Import setPrimaryColor
     lang, 
     currentUnit, 
     lastResultDown, 
@@ -129,30 +130,24 @@ function initMenu() {
         document.body.classList.add('menu-open');
     }
 
-    // Toggle (Mobile)
     if(menuToggle) {
         menuToggle.onclick = () => {
             if (sidebar.classList.contains('open')) closeMenu();
             else openMenu();
         };
     }
-
-    // Zamknięcie po kliknięciu w overlay
     if(overlay) overlay.onclick = closeMenu;
 
-    // Nawigacja: Dashboard (Scroll to top)
     if(navDashboard) {
         navDashboard.onclick = (e) => {
             e.preventDefault();
             window.scrollTo({ top: 0, behavior: 'smooth' });
             closeMenu();
-            // Aktualizacja aktywnego linku
             navDashboard.classList.add('active');
             if(navHistory) navHistory.classList.remove('active');
         };
     }
 
-    // Nawigacja: Pomiary (Scroll to history)
     if(navHistory) {
         navHistory.onclick = (e) => {
             e.preventDefault();
@@ -160,29 +155,37 @@ function initMenu() {
             if(section) {
                 section.scrollIntoView({ behavior: 'smooth' });
                 closeMenu();
-                // Aktualizacja aktywnego linku
                 navHistory.classList.add('active');
                 if(navDashboard) navDashboard.classList.remove('active');
             }
         };
     }
     
-    // Ustawienie domyślne active na Dashboard na start
     if(navDashboard) navDashboard.classList.add('active');
 }
 
 window.onload = () => {
     const savedTheme = localStorage.getItem('ls_theme') || 'dark';
     document.body.setAttribute('data-theme', savedTheme);
+    // Ustawienie atrybutu też na HTML dla spójności
+    document.documentElement.setAttribute('data-theme', savedTheme);
     
     setLang(localStorage.getItem('ls_lang') || 'en');
     setCurrentUnit(localStorage.getItem('ls_unit') || 'mbps');
+    
+    // DODANO: Jawne ustawienie koloru przy starcie JS
+    // To naprawia sytuację, jeśli skrypt w <head> zawiódł
+    const savedColor = localStorage.getItem('ls_primary_color');
+    if (savedColor) {
+        setPrimaryColor(savedColor);
+    }
+
     updateThemeIcon(savedTheme);
 
     initGauge();
     initCharts(); 
     initHistoryEvents();
-    initMenu(); // Inicjalizacja menu
+    initMenu(); 
 
     loadSettings().then(() => loadHistory());
     
@@ -212,6 +215,7 @@ window.onload = () => {
         const current = document.body.getAttribute('data-theme');
         const next = current === 'dark' ? 'light' : 'dark';
         document.body.setAttribute('data-theme', next);
+        document.documentElement.setAttribute('data-theme', next); // Update HTML too
         updateThemeIcon(next);
         
         reloadGauge(); 

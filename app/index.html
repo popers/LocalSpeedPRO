@@ -19,16 +19,41 @@
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/canvas-gauges@2.1.7/gauge.min.js"></script>
+
+    <script>
+        (function() {
+            function hexToRgb(hex) {
+                let c;
+                if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+                    c= hex.substring(1).split('');
+                    if(c.length== 3){
+                        c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+                    }
+                    c= '0x'+c.join('');
+                    return [(c>>16)&255, (c>>8)&255, c&255].join(', ');
+                }
+                return null;
+            }
+
+            const savedTheme = localStorage.getItem('ls_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            
+            const savedColor = localStorage.getItem('ls_primary_color');
+            // POPRAWKA: Sprawdzamy czy nie jest "null"
+            if(savedColor && savedColor !== 'null') {
+                document.documentElement.style.setProperty('--primary', savedColor);
+                const rgb = hexToRgb(savedColor);
+                if(rgb) document.documentElement.style.setProperty('--primary-rgb', rgb);
+            }
+        })();
+    </script>
 </head>
 <body>
 
-    <!-- Overlay dla menu mobilnego -->
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
-    <!-- HEADER: Teraz wyjęty przed app-layout, na samej górze -->
     <header>
         <div class="header-left">
-            <!-- Przycisk Hamburgera -->
             <button id="menu-toggle" class="menu-toggle" aria-label="Menu">
                 <span class="material-icons">menu</span>
             </button>
@@ -48,19 +73,14 @@
         </div>
     </header>
 
-    <!-- Główny układ Layoutu -->
     <div class="app-layout">
         
-        <!-- MENU BOCZNE -->
         <aside class="sidebar" id="app-sidebar">
-            
-            <!-- Nagłówek tylko dla mobile (wewnątrz menu) -->
             <div class="sidebar-mobile-header">
                 <span class="material-icons">speed</span>
                 LocalSpeed PRO
             </div>
 
-            <!-- Linki nawigacyjne -->
             <nav>
                 <a href="#" class="nav-link" id="nav-dashboard">
                     <span class="material-icons">dashboard</span>
@@ -71,13 +91,16 @@
                     <span class="material-icons">history</span>
                     <span data-key="nav_measurements">Pomiary</span>
                 </a>
+                
+                <a href="/settings.html" class="nav-link" id="nav-settings">
+                    <span class="material-icons">settings</span>
+                    <span data-key="nav_settings">Ustawienia</span>
+                </a>
             </nav>
         </aside>
 
-        <!-- Treść Główna: Teraz bezpośrednio w app-layout, bez wrappera -->
         <main>
             <div class="dashboard-container">
-                
                 <div class="gauge-section">
                     <canvas id="speed-gauge"></canvas>
                     <div class="digital-box">
@@ -190,7 +213,7 @@
                 </div>
             </div>
         </main>
-    </div> <!-- End app-layout -->
+    </div> 
 
     <div id="delete-modal" class="modal-overlay hidden">
         <div class="modal-content">

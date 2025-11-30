@@ -1,14 +1,14 @@
-import { el, log, setLang, setCurrentUnit, lang, currentUnit, updateTexts } from './utils.js';
+import { el, log, setLang, setCurrentUnit, setPrimaryColor, lang, currentUnit, primaryColor, updateTexts } from './utils.js';
 import { translations } from './config.js';
 import { reloadGauge } from './gauge.js';
-import { loadHistory } from './history_ui.js';
+import { initCharts } from './charts.js'; 
 
 export async function loadSettings() {
     try {
         const res = await fetch('/api/settings');
         const data = await res.json();
         
-        let shouldReloadGauge = false;
+        let shouldReloadVisuals = false;
         const currentTheme = document.body.getAttribute('data-theme');
         
         if(data.lang && lang !== data.lang) { 
@@ -18,34 +18,76 @@ export async function loadSettings() {
         if(data.theme && currentTheme !== data.theme) { 
             document.body.setAttribute('data-theme', data.theme); 
             localStorage.setItem('ls_theme', data.theme); 
-            shouldReloadGauge = true;
+            shouldReloadVisuals = true;
         }
         if(data.unit && currentUnit !== data.unit) {
             setCurrentUnit(data.unit);
             localStorage.setItem('ls_unit', data.unit);
-            shouldReloadGauge = true;
+            shouldReloadVisuals = true;
         }
         
-        if (shouldReloadGauge) {
-            reloadGauge(); 
+        // POPRAWKA: Obsługa null/brakującego koloru
+        const incomingColor = data.primary_color;
+        // Sprawdzamy czy kolor się różni. Traktujemy null i "null" jako brak koloru.
+        const effectiveCurrent = (primaryColor === 'null') ? null : primaryColor;
+        
+        if (incomingColor !== effectiveCurrent) {
+            setPrimaryColor(incomingColor);
+            
+            if (incomingColor) {
+                localStorage.setItem('ls_primary_color', incomingColor);
+            } else {
+                localStorage.removeItem('ls_primary_color');
+            }
+            shouldReloadVisuals = true;
+        }
+        
+        if (shouldReloadVisuals) {
+            if (typeof reloadGauge === 'function') reloadGauge(); 
+            if (typeof initCharts === 'function') initCharts();
         }
         
         updateTexts();
+        return data;
     } catch(e) { 
         console.error("Settings load error", e); 
         updateTexts(); 
+        return null;
     }
 }
 
-export async function saveSettings(newLang, newTheme, newUnit) {
-    localStorage.setItem('ls_lang', newLang);
-    localStorage.setItem('ls_theme', newTheme);
-    localStorage.setItem('ls_unit', newUnit);
+export async function saveSettings(newLang, newTheme, newUnit, newColor) {
+    const l = newLang || lang;
+    const t = newTheme || document.body.getAttribute('data-theme');
+    const u = newUnit || currentUnit;
+    
+    // Specjalna obsługa koloru: jeśli explicitly passed as null, to null. Jeśli undefined, to obecny.
+    let c = (newColor === null) ? null : (newColor || primaryColor);
+    
+    // Jeśli obecny kolor to string "null" (błąd), zamień na null
+    if (c === 'null') c = null;
+
+    localStorage.setItem('ls_lang', l);
+    localStorage.setItem('ls_theme', t);
+    localStorage.setItem('ls_unit', u);
+    
+    // POPRAWKA: Nie zapisuj "null" jako string
+    if (c) {
+        localStorage.setItem('ls_primary_color', c);
+    } else {
+        localStorage.removeItem('ls_primary_color');
+    }
+    
     try {
         await fetch('/api/settings', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ lang: newLang, theme: newTheme, unit: newUnit })
+            body: JSON.stringify({ 
+                lang: l, 
+                theme: t, 
+                unit: u,
+                primary_color: c
+            })
         });
     } catch(e) { 
         console.error("Settings save error", e);
@@ -64,8 +106,8 @@ export async function saveResult(ping, down, up) {
         
         if (res.ok) {
             setTimeout(() => {
-                loadHistory(1, 'date', 'desc'); 
-                // POPRAWKA: Tylko czysty komunikat z config.js
+                const event = new CustomEvent('historyUpdated');
+                window.dispatchEvent(event);
                 log(translations[lang].log_end);
             }, 500); 
         } else {

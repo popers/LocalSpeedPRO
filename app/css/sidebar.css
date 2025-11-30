@@ -1,11 +1,10 @@
 /* STYLES FOR SIDEBAR MENU */
 
-/* Kontener główny aplikacji */
 .app-layout {
     display: block;
     width: 100%;
     min-height: 100vh;
-    padding-top: var(--header-height); /* Odsuwamy treść od góry o wysokość headera */
+    padding-top: var(--header-height);
     box-sizing: border-box;
 }
 
@@ -63,7 +62,8 @@
 }
 
 .nav-link.active {
-    background-color: rgba(98, 0, 234, 0.1);
+    /* ZMIANA: Użycie --primary-rgb dla tła */
+    background-color: rgba(var(--primary-rgb), 0.1);
     color: var(--primary);
 }
 .nav-link.active .material-icons {
@@ -71,32 +71,23 @@
     color: var(--primary);
 }
 
-/* NADPISANIE STYLU MAIN DLA UKŁADU Z SIDEBAREM */
 .app-layout main {
-    /* Przesunięcie kontenera w prawo o szerokość sidebara */
     margin-left: 260px !important; 
-    
-    /* ZMIANA: Wyśrodkowanie zawartości w poziomie */
     display: flex;
     flex-direction: column;
-    align-items: center; /* To wyśrodkuje dzieci (dashboard i historię) */
-    
+    align-items: center; 
     margin-top: 2rem;
     margin-bottom: 2rem;
     margin-right: 0;
-    
-    /* ZMIANA: Main zajmuje całą dostępną przestrzeń obok menu */
     width: auto !important; 
     max-width: none !important; 
     padding: 0 2rem;
 }
 
-/* ZMIANA: Ograniczamy szerokość bezpośrednich dzieci main (Dashboardu i Tabeli), aby były wyśrodkowane i miały zgrabny rozmiar */
 .app-layout main > * {
     width: 100%;
-    max-width: 1200px; /* Optymalna szerokość kontentu */
+    max-width: 1200px; 
 }
-
 
 /* --- RESPANSYWNOŚĆ - MOBILE --- */
 .sidebar-overlay {
@@ -144,11 +135,10 @@
         gap: 10px;
     }
 
-    /* Reset marginesu dla main na mobile */
     .app-layout main {
         margin-left: 0 !important;
         padding: 0 1rem;
-        display: block; /* Na mobile wracamy do bloku, aby wykorzystać 100% szerokości */
+        display: block; 
     }
     
     .app-layout main > * {

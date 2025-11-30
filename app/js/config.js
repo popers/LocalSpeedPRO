@@ -32,10 +32,20 @@ export const translations = {
         msg_theme_light: "Motyw jasny",
         msg_unit_mbps: "Zmieniono jednostkę: Mbps",
         msg_unit_mbs: "Zmieniono jednostkę: MB/s",
+        msg_color_saved: "Zapisano nowy kolor",
+        msg_settings_saved: "Zapisano ustawienia",
 
         // --- MENU ---
         nav_dashboard: "Panel Główny",
         nav_measurements: "Pomiary",
+        nav_settings: "Ustawienia",
+
+        // --- SETTINGS PAGE ---
+        settings_title: "Ustawienia",
+        settings_appearance: "Wygląd",
+        lbl_primary_color: "Kolor wiodący",
+        lbl_theme_mode: "Tryb motywu",
+        btn_reset_color: "Przywróć domyślny",
 
         // --- LOGIN PAGE ---
         login_header: "LocalSpeed PRO",
@@ -77,10 +87,20 @@ export const translations = {
         msg_theme_light: "Light theme",
         msg_unit_mbps: "Unit changed: Mbps",
         msg_unit_mbs: "Unit changed: MB/s",
+        msg_color_saved: "New color saved",
+        msg_settings_saved: "Settings saved",
 
         // --- MENU ---
         nav_dashboard: "Dashboard",
         nav_measurements: "Measurements",
+        nav_settings: "Settings",
+
+        // --- SETTINGS PAGE ---
+        settings_title: "Settings",
+        settings_appearance: "Appearance",
+        lbl_primary_color: "Primary Color",
+        lbl_theme_mode: "Theme Mode",
+        btn_reset_color: "Reset to default",
 
         // --- LOGIN PAGE ---
         login_header: "LocalSpeed PRO",

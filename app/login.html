@@ -10,10 +10,36 @@
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/login.css">
     <link rel="stylesheet" href="/css/toast.css">
+
+    <script>
+        (function() {
+            function hexToRgb(hex) {
+                let c;
+                if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+                    c= hex.substring(1).split('');
+                    if(c.length== 3){
+                        c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+                    }
+                    c= '0x'+c.join('');
+                    return [(c>>16)&255, (c>>8)&255, c&255].join(', ');
+                }
+                return null;
+            }
+
+            const savedTheme = localStorage.getItem('ls_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            const savedColor = localStorage.getItem('ls_primary_color');
+            // POPRAWKA: Zabezpieczenie przed "null"
+            if(savedColor && savedColor !== 'null') {
+                document.documentElement.style.setProperty('--primary', savedColor);
+                const rgb = hexToRgb(savedColor);
+                if(rgb) document.documentElement.style.setProperty('--primary-rgb', rgb);
+            }
+        })();
+    </script>
 </head>
 <body>
 
-    <!-- Kontrolki w prawym górnym rogu -->
     <div class="controls-wrapper">
         <button id="lang-toggle" class="btn-icon" aria-label="Język"><span>PL</span></button>
         <button id="theme-toggle" class="btn-icon" aria-label="Motyw">
@@ -45,22 +71,18 @@
 
     <div id="toast-container"></div>
 
-    <!-- Używamy type="module" aby importować funkcje z utils.js i config.js -->
     <script type="module">
-        import { log, setLang, lang, updateThemeIcon } from '/js/utils.js';
+        import { log, setLang, lang, updateThemeIcon, setPrimaryColor } from '/js/utils.js';
         import { translations } from '/js/config.js';
+        import { loadSettings } from '/js/data_sync.js';
 
         const form = document.getElementById('login-form');
         const errorDiv = document.getElementById('error-message');
         const langBtn = document.getElementById('lang-toggle');
         const themeBtn = document.getElementById('theme-toggle');
 
-        // Funkcja do aktualizacji tekstów na stronie logowania
         function updateLoginTexts() {
-            // Aktualizacja przycisku języka - pokazuje AKTUALNY język (PL/EN)
             langBtn.innerText = lang.toUpperCase();
-
-            // Aktualizacja tekstów z atrybutem data-key
             document.querySelectorAll('[data-key]').forEach(elem => {
                 const key = elem.getAttribute('data-key');
                 if (translations[lang][key]) {
@@ -69,38 +91,29 @@
             });
         }
 
-        // INIT
         const savedTheme = localStorage.getItem('ls_theme') || 'dark';
         document.body.setAttribute('data-theme', savedTheme);
         updateThemeIcon(savedTheme);
         
-        // Wczytanie języka z localStorage (ZMIANA NA 'en' domyślnie)
         const savedLang = localStorage.getItem('ls_lang') || 'en';
         setLang(savedLang);
         updateLoginTexts();
-
-        // Sprawdzenie czy użytkownik został właśnie wylogowany
+        
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('logout') === 'true') {
             log(translations[lang].msg_logged_out);
-            // Wyczyszczenie URL aby po odświeżeniu nie pokazywać komunikatu ponownie
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
-        // OBSŁUGA MOTYWU
         themeBtn.onclick = () => {
             const current = document.body.getAttribute('data-theme');
             const next = current === 'dark' ? 'light' : 'dark';
-            
             document.body.setAttribute('data-theme', next);
+            document.documentElement.setAttribute('data-theme', next);
             localStorage.setItem('ls_theme', next);
             updateThemeIcon(next);
-            
-            if(next === 'dark') log(translations[lang].msg_theme_dark);
-            else log(translations[lang].msg_theme_light);
         };
 
-        // OBSŁUGA JĘZYKA
         langBtn.onclick = () => {
             const nextLang = lang === 'pl' ? 'en' : 'pl';
             setLang(nextLang);
@@ -109,7 +122,6 @@
             log(translations[lang].msg_lang);
         };
 
-        // OBSŁUGA LOGOWANIA
         form.onsubmit = async (e) => {
             e.preventDefault();
             errorDiv.innerText = '';
@@ -125,17 +137,14 @@
                 });
 
                 if (res.ok) {
-                    // ZMIANA: Przekierowanie natychmiastowe z parametrem
-                    // Powiadomienie "Zalogowano pomyślnie" zostanie wyświetlone na stronie głównej (main.js)
                     window.location.href = '/?login=success';
                 } else {
                     const data = await res.json();
                     errorDiv.innerText = translations[lang].msg_login_error || (data.detail || "Error");
                     
-                    // Shake effect
                     const container = document.querySelector('.login-container');
                     container.style.animation = 'none';
-                    container.offsetHeight; /* trigger reflow */
+                    container.offsetHeight; 
                     container.style.animation = 'shake 0.5s';
                 }
             } catch (err) {
@@ -144,7 +153,6 @@
             }
         };
 
-        // Dodanie animacji trzęsienia dynamicznie
         const style = document.createElement('style');
         style.innerHTML = `
             @keyframes shake {

@@ -88,7 +88,8 @@
     background: var(--primary);
     color: white;
     border-color: var(--primary);
-    box-shadow: 0 4px 10px rgba(98, 0, 234, 0.3);
+    /* ZMIANA: Dynamiczny cień RGB */
+    box-shadow: 0 4px 10px rgba(var(--primary-rgb), 0.3);
     transform: translateY(-1px);
 }
 

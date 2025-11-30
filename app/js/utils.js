@@ -3,11 +3,13 @@ import { translations } from './config.js';
 export const el = (id) => document.getElementById(id);
 
 // --- Zmienne globalne do stanu aplikacji ---
-// ZMIANA: Domyślnie 'en' jeśli localStorage jest pusty
 export let lang = localStorage.getItem('ls_lang') || 'en';
 export let currentUnit = localStorage.getItem('ls_unit') || 'mbps';
-export let lastResultDown = 0; // w Mbps
-export let lastResultUp = 0;   // w Mbps
+// ZMIANA: Pobieramy kolor bez fallbacka tutaj, fallback obsłuży funkcja getPrimaryColor
+export let primaryColor = localStorage.getItem('ls_primary_color'); 
+
+export let lastResultDown = 0; 
+export let lastResultUp = 0;   
 
 export function setLang(newLang) {
     lang = newLang;
@@ -15,15 +17,48 @@ export function setLang(newLang) {
 export function setCurrentUnit(newUnit) {
     currentUnit = newUnit;
 }
-// FUNKCJE AKTUALIZUJĄCE WYNIKI
-export function setLastResultDown(val) {
-    lastResultDown = val;
-}
-export function setLastResultUp(val) {
-    lastResultUp = val;
+export function setPrimaryColor(color) {
+    primaryColor = color;
+    applyPrimaryColor(color);
 }
 
-// --- HELPERY FORMATOWANIA ---
+// Aplikowanie koloru do CSS
+export function applyPrimaryColor(color) {
+    if (color) {
+        document.documentElement.style.setProperty('--primary', color);
+    } else {
+        document.documentElement.style.removeProperty('--primary');
+    }
+}
+
+// NOWE: Funkcja zwracająca aktualny kolor w formacie HEX
+// Jeśli użytkownik nie ustawił koloru, zwraca domyślny dla obecnego motywu
+export function getPrimaryColor() {
+    if (primaryColor) return primaryColor;
+    
+    const isDark = document.body.getAttribute('data-theme') === 'dark';
+    // Domyślne kolory zdefiniowane w CSS (base.css)
+    return isDark ? '#bb86fc' : '#6200ea';
+}
+
+// NOWE: Konwersja HEX na RGBA (potrzebne do wykresów i gauge)
+export function hexToRgba(hex, alpha) {
+    let c;
+    if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+        c= hex.substring(1).split('');
+        if(c.length== 3){
+            c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+        }
+        c= '0x'+c.join('');
+        return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
+    }
+    // Fallback jeśli format jest błędny
+    return `rgba(98, 0, 234, ${alpha})`;
+}
+
+export function setLastResultDown(val) { lastResultDown = val; }
+export function setLastResultUp(val) { lastResultUp = val; }
+
 export function formatSpeed(valMbps) {
     if (currentUnit === 'mbs') return (valMbps / 8).toFixed(1);
     return valMbps.toFixed(1);
@@ -33,7 +68,6 @@ export function getUnitLabel() {
     return currentUnit === 'mbs' ? 'MB/s' : 'Mbps';
 }
 
-// NOWA FUNKCJA: Zapewnia timeout (używana w Promise.race w main.js)
 export function timeout(ms) {
     return new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Test Timeout')), ms);
@@ -60,8 +94,11 @@ export const log = (msg) => {
 
 // --- AKTUALIZACJA UI TEKSTÓW ---
 export function updateTexts(gaugeInstance) {
-    el('lang-toggle').innerText = lang.toUpperCase();
-    el('unit-toggle').innerText = getUnitLabel();
+    const langBtn = el('lang-toggle');
+    if(langBtn) langBtn.innerText = lang.toUpperCase();
+    
+    const unitBtn = el('unit-toggle');
+    if(unitBtn) unitBtn.innerText = getUnitLabel();
     
     document.querySelectorAll('.unit-label').forEach(e => e.innerText = getUnitLabel());
     document.querySelectorAll('[data-key]').forEach(elem => {
@@ -77,7 +114,6 @@ export function updateTexts(gaugeInstance) {
     }
 }
 
-// --- Funkcja do resetowania ikon motywu ---
 export function updateThemeIcon(theme) {
     const icon = el('theme-icon');
     if (icon) {

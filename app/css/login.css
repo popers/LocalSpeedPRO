@@ -5,7 +5,7 @@ body {
     align-items: center;
     min-height: 100vh;
     background: var(--bg);
-    position: relative; /* Dla pozycjonowania kontrolek */
+    position: relative; 
 }
 
 .login-container {
@@ -58,7 +58,7 @@ body {
     background: var(--bg);
     color: var(--text);
     font-size: 1rem;
-    box-sizing: border-box; /* Ważne */
+    box-sizing: border-box; 
     transition: border-color 0.3s;
 }
 
@@ -82,24 +82,24 @@ body {
 
 .btn-login:hover {
     transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(98, 0, 234, 0.3);
+    /* ZMIANA: Dynamiczny cień RGB */
+    box-shadow: 0 5px 15px rgba(var(--primary-rgb), 0.3);
 }
 
 .error-msg {
     color: #ff5252;
     margin-top: 1rem;
     font-size: 0.9rem;
-    min-height: 20px; /* Rezerwuje miejsce */
+    min-height: 20px; 
 }
 
-/* Kontrolki w prawym górnym rogu (Język i Motyw) */
 .controls-wrapper {
-    position: fixed; /* ZMIANA: fixed zamiast absolute - przykleja do okna */
+    position: fixed; 
     top: 20px;
     right: 20px;
     display: flex;
     gap: 10px;
-    z-index: 100; /* Wysoki z-index, aby przyciski były nad formularzem przy przewijaniu */
+    z-index: 100; 
 }
 
 .btn-icon {
@@ -109,7 +109,7 @@ body {
     cursor: pointer;
     padding: 8px;
     font-weight: bold;
-    font-size: 1.2rem; /* ZWIĘKSZONO: Aby PL/EN pasowało wielkością do ikon */
+    font-size: 1.2rem; 
     display: flex;
     align-items: center;
     justify-content: center;
@@ -118,7 +118,6 @@ body {
     border-radius: 50%;
     transition: background 0.2s;
     
-    /* Opcjonalnie: lekkie rozmycie tła pod przyciskiem, aby był czytelny nad formularzem */
     backdrop-filter: blur(2px); 
 }
 
@@ -126,20 +125,18 @@ body {
     background: rgba(128, 128, 128, 0.1);
 }
 
-/* --- RESPONSYWNOŚĆ MOBILNA --- */
 @media (max-width: 480px) {
     body {
-        /* Centrowanie na środku ekranu */
         align-items: center;
         padding-top: 0;
-        overflow: hidden; /* ZABLOKOWANIE PRZEWIJANIA */
+        overflow: hidden; 
     }
 
     .login-container {
-        padding: 1.5rem; /* Zmniejszony padding */
+        padding: 1.5rem; 
         width: 90%;
         max-width: 350px;
-        margin: auto; /* Centrowanie */
+        margin: auto; 
     }
 
     .login-header {
@@ -160,7 +157,7 @@ body {
     }
 
     .form-group input {
-        padding: 10px; /* Mniejsze pola */
+        padding: 10px; 
         font-size: 0.95rem;
     }
 
@@ -168,7 +165,6 @@ body {
         padding: 10px;
     }
 
-    /* Przesuwamy kontrolki nieco niżej/bliżej krawędzi na mobile */
     .controls-wrapper {
         top: 10px;
         right: 10px;

@@ -1,5 +1,11 @@
 :root {
-    --primary: #6200ea;
+    /* ZMIANA: Zmienne pomocnicze dla RGB */
+    --theme-primary: #6200ea;
+    --theme-primary-rgb: 98, 0, 234; /* RGB dla #6200ea */
+    
+    --primary: var(--theme-primary);
+    --primary-rgb: var(--theme-primary-rgb);
+
     --accent: #00e5ff;
     --bg: #f4f7f6;
     --surface: #ffffff;
@@ -7,12 +13,13 @@
     --border: #dfe6e9;
     --shadow: 0 10px 20px rgba(0,0,0,0.05);
     
-    /* NOWA ZMIENNA: Wysokość nagłówka */
     --header-height: 70px;
 }
 
 [data-theme="dark"] {
-    --primary: #bb86fc;
+    --theme-primary: #bb86fc;
+    --theme-primary-rgb: 187, 134, 252; /* RGB dla #bb86fc */
+
     --accent: #03dac6;
     --bg: #121212;
     --surface: #1e1e1e;
@@ -30,7 +37,6 @@ body {
     transition: 0.3s; 
 }
 
-/* Domyślny main (nadpisywany w sidebar.css dla dashboardu) */
 main { 
     max-width: 1200px; 
     margin: 2rem auto; 
