@@ -10,9 +10,9 @@ import {
     updateTexts, 
     updateThemeIcon,
     formatSpeed,
-    timeout // IMPORT ZMIANY Z UTILS
+    timeout 
 } from '/js/utils.js';
-import { translations, TEST_DURATION } from '/js/config.js'; // IMPORT ZMIANY Z CONFIG
+import { translations, TEST_DURATION } from '/js/config.js'; 
 import { initGauge, reloadGauge, getGaugeInstance } from '/js/gauge.js';
 import { initCharts, resetCharts } from '/js/charts.js';
 import { loadSettings, saveSettings, saveResult } from '/js/data_sync.js';
@@ -22,8 +22,11 @@ import { runPing, runDownload, runUpload } from '/js/speedtest.js';
 // --- Główna funkcja uruchamiająca test ---
 async function startTest() {
     const btn = el('start-btn');
-    // BLOKOWANIE PRZYCISKU
+    
+    // BLOKOWANIE PRZYCISKU I WŁĄCZENIE ANIMACJI
     btn.disabled = true;
+    btn.classList.add('loading'); // Dodajemy klasę animacji kropek
+
     el('speed-value').innerText = "0.00";
     reloadGauge(); // Resetuje zegar i skalę
     resetCharts();
@@ -38,7 +41,7 @@ async function startTest() {
 
         // 1. PING
         log(translations[lang].log_ping_start);
-        // Użycie Promise.race dla pingu nie jest konieczne, ale dodanie dla spójności i bezpieczeństwa
+        // Użycie Promise.race dla pingu
         ping = await Promise.race([runPing(), timeout(3000)]);
         if (typeof ping !== 'number') throw new Error("Ping timeout");
         el('ping-text').textContent = ping.toFixed(1);
@@ -47,8 +50,7 @@ async function startTest() {
         el('card-down').classList.add('active');
         log(translations[lang].log_down_start);
         
-        // UŻYCIE PROMISE.RACE: Wymusi zakończenie testu po TEST_DURATION, 
-        // jeśli runDownload sam się nie zakończy
+        // UŻYCIE PROMISE.RACE dla Download
         down = await Promise.race([runDownload(), timeout(TEST_DURATION + 1000)]); 
         
         el('down-val').textContent = formatSpeed(down); 
@@ -62,33 +64,30 @@ async function startTest() {
         el('card-up').classList.add('active');
         log(translations[lang].log_up_start);
         
-        // UŻYCIE PROMISE.RACE: Wymusi zakończenie testu po TEST_DURATION, 
-        // jeśli runUpload sam się nie zakończy
+        // UŻYCIE PROMISE.RACE dla Upload
         up = await Promise.race([runUpload(), timeout(TEST_DURATION + 1000)]);
         
         el('up-val').textContent = formatSpeed(up);
         el('card-up').classList.remove('active');
 
         // 4. SAVE & CLEANUP
-        // saveResult automatycznie odświeży historię i pokaże toast z komunikatem o zapisie/błędzie
         await saveResult(ping, down, up); 
         
         if (gaugeInstance) gaugeInstance.value = 0;
         el('speed-value').innerText = "0.00";
         
     } catch (error) {
-        // Ta sekcja zostanie wywołana, jeśli wystąpi błąd w Fetch/XHR LUB zostanie osiągnięty timeout
         console.error("Błąd podczas testu:", error);
         log(translations[lang].err + "Test przerwany: " + error.message);
     } finally {
-        // ODBLOKOWANIE PRZYCISKU ZAWSZE, BEZ WZGLĘDU NA SUKCES LUB BŁĄD
+        // ODBLOKOWANIE PRZYCISKU I USUNIĘCIE ANIMACJI
         btn.disabled = false;
+        btn.classList.remove('loading'); // Usuwamy kropki, wraca tekst "START"
         
         // Dodatkowe, awaryjne powiadomienie
         if (ping > 0 && down > 0 && up > 0) {
-            // Jeśli test się udał i saveResult też, toast jest już pokazany w data_sync.js
+            // Jeśli test się udał, toast jest już pokazany w data_sync.js
         } else {
-            // Jeśli test przerwany, ale przycisk został odblokowany
             log(translations[lang].log_end + " Przycisk odblokowany.");
         }
     }
@@ -131,7 +130,7 @@ window.onload = () => {
         
         // Przeładowanie zegara po zmianie motywu
         reloadGauge(); 
-        updateTexts(getGaugeInstance()); // Odświeżenie tekstów w zegarze
+        updateTexts(getGaugeInstance()); 
 
         saveSettings(lang, next, currentUnit);
         if(next === 'dark') log(translations[lang].msg_theme_dark);
@@ -146,8 +145,7 @@ window.onload = () => {
         // Przeładowanie zegara i odświeżenie kafelków/historii
         reloadGauge(); 
         updateTexts(getGaugeInstance());
-        // lastResultDown/Up są importowane z utils, więc mają już zaktualizowane wartości
-        updateStatTiles(lastResultDown, lastResultUp); // Aktualizacja kafelków po zmianie jednostki
+        updateStatTiles(lastResultDown, lastResultUp); 
         loadHistory(); 
         
         saveSettings(lang, currentTheme, nextUnit);
@@ -155,15 +153,12 @@ window.onload = () => {
         else log(translations[lang].msg_unit_mbs);
     };
 
-    // Zmiana rozmiaru okna - NAPRAWIONY PROBLEM SCROLLA NA MOBILE
+    // Zmiana rozmiaru okna
     let resizeTimeout;
-    let lastWidth = window.innerWidth; // Zapamiętujemy szerokość startową
+    let lastWidth = window.innerWidth; 
 
     window.onresize = () => { 
         const currentWidth = window.innerWidth;
-        
-        // Ignoruj zdarzenie resize, jeśli szerokość się nie zmieniła.
-        // Na mobile chowanie paska adresu zmienia tylko wysokość.
         if (currentWidth === lastWidth) return;
 
         lastWidth = currentWidth;

@@ -80,12 +80,103 @@
 
 .btn-primary {
     background: linear-gradient(45deg, var(--primary), #7c4dff);
-    color: white; border: none; padding: 1.2rem 5rem; 
+    color: white; 
+    border: none; 
+    padding: 1.2rem 5rem; 
     font-size: 1.4rem; 
-    border-radius: 50px; cursor: pointer; font-weight: 700; letter-spacing: 1px;
-    box-shadow: 0 5px 15px rgba(98, 0, 234, 0.3); transition: 0.3s;
+    border-radius: 50px; 
+    cursor: pointer; 
+    font-weight: 700; 
+    letter-spacing: 1px;
+    box-shadow: 0 5px 15px rgba(98, 0, 234, 0.3); 
+    transition: 0.3s;
     width: 100%; 
     max-width: 350px;
+    position: relative; /* Potrzebne do pozycjonowania animacji */
 }
 .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(98, 0, 234, 0.4); }
 .btn-primary:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+
+/* --- ANIMACJA KROPEK (LOADING) --- */
+
+/* Kiedy przycisk ma klasę .loading */
+.btn-primary.loading {
+    color: transparent; /* Ukrywamy tekst "START" */
+    pointer-events: none; /* Blokujemy klikanie */
+    
+    /* Tło na kolor powierzchni, aby kropki były widoczne */
+    background: var(--surface);
+    /* Obramowanie w kolorze głównym */
+    border: 2px solid var(--primary);
+    box-shadow: none; 
+}
+
+/* Tworzymy kropki za pomocą ::after */
+.btn-primary.loading::after {
+    content: '';
+    position: absolute;
+    /* FIX: Ustawiamy mały rozmiar (nie 0), aby border-radius działał poprawnie */
+    width: 4px;
+    height: 4px;
+    border-radius: 50%; /* Kluczowe dla okrągłych cieni */
+    
+    /* Centrowanie na przycisku */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    
+    background: transparent;
+    border: none;
+    
+    animation: dot-pulse 1.4s infinite ease-in-out;
+}
+
+/* Definicja klatek kluczowych dla pulsowania 4 kropek */
+@keyframes dot-pulse {
+    /* Element bazowy ma 4px.
+       Spread 4px daje: 4px (baza) + 4px (lewo) + 4px (prawo) = 12px średnicy.
+       Spread 6px daje: 4px (baza) + 6px (lewo) + 6px (prawo) = 16px średnicy.
+    */
+    0% {
+        box-shadow: 
+            -32px 0 0 4px var(--primary), 
+            -11px 0 0 4px var(--primary), 
+             11px 0 0 4px var(--primary), 
+             32px 0 0 4px var(--primary);
+    }
+    20% {
+        box-shadow: 
+            -32px 0 0 6px var(--primary), /* Pierwsza rośnie */
+            -11px 0 0 4px var(--primary), 
+             11px 0 0 4px var(--primary), 
+             32px 0 0 4px var(--primary);
+    }
+    40% {
+        box-shadow: 
+            -32px 0 0 4px var(--primary), 
+            -11px 0 0 6px var(--primary), /* Druga rośnie */
+             11px 0 0 4px var(--primary), 
+             32px 0 0 4px var(--primary);
+    }
+    60% {
+        box-shadow: 
+            -32px 0 0 4px var(--primary), 
+            -11px 0 0 4px var(--primary), 
+             11px 0 0 6px var(--primary), /* Trzecia rośnie */
+             32px 0 0 4px var(--primary);
+    }
+    80% {
+        box-shadow: 
+            -32px 0 0 4px var(--primary), 
+            -11px 0 0 4px var(--primary), 
+             11px 0 0 4px var(--primary), 
+             32px 0 0 6px var(--primary); /* Czwarta rośnie */
+    }
+    100% {
+        box-shadow: 
+            -32px 0 0 4px var(--primary), 
+            -11px 0 0 4px var(--primary), 
+             11px 0 0 4px var(--primary), 
+             32px 0 0 4px var(--primary);
+    }
+}
