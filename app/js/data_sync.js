@@ -3,7 +3,6 @@ import { translations } from './config.js';
 import { reloadGauge } from './gauge.js';
 import { loadHistory } from './history_ui.js';
 
-// --- Wczytywanie ustawień z serwera ---
 export async function loadSettings() {
     try {
         const res = await fetch('/api/settings');
@@ -34,12 +33,10 @@ export async function loadSettings() {
         updateTexts();
     } catch(e) { 
         console.error("Settings load error", e); 
-        // Jeśli ładowanie ustawień z serwera zawiedzie, używamy tylko localStorage
         updateTexts(); 
     }
 }
 
-// --- Zapis ustawień na serwerze ---
 export async function saveSettings(newLang, newTheme, newUnit) {
     localStorage.setItem('ls_lang', newLang);
     localStorage.setItem('ls_theme', newTheme);
@@ -56,7 +53,6 @@ export async function saveSettings(newLang, newTheme, newUnit) {
     }
 }
 
-// --- Zapis wyniku testu na serwerze ---
 export async function saveResult(ping, down, up) {
     try {
         const currentTheme = document.body.getAttribute('data-theme') || 'dark';
@@ -67,10 +63,10 @@ export async function saveResult(ping, down, up) {
         });
         
         if (res.ok) {
-            // PO Pomyślnym ZAPISIE, AUTOMATYCZNIE PRZECHODZIMY DO PIERWSZEJ STRONY HISTORII I ODŚWIEŻAMY
             setTimeout(() => {
                 loadHistory(1, 'date', 'desc'); 
-                log(translations[lang].log_end + " Wynik zapisany.");
+                // POPRAWKA: Tylko czysty komunikat z config.js
+                log(translations[lang].log_end);
             }, 500); 
         } else {
             const errorData = await res.json();
@@ -82,7 +78,6 @@ export async function saveResult(ping, down, up) {
     }
 }
 
-// --- Ładowanie historii (używane w history_ui.js) ---
 export async function fetchHistory(page, limit, sortBy, order) {
     try {
         const res = await fetch(`/api/history?page=${page}&limit=${limit}&sort_by=${sortBy}&order=${order}`);
@@ -93,7 +88,6 @@ export async function fetchHistory(page, limit, sortBy, order) {
     }
 }
 
-// --- Usuwanie elementów (NOWE) ---
 export async function deleteItems(ids) {
     try {
         const res = await fetch('/api/history', {

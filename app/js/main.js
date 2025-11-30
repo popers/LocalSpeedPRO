@@ -25,10 +25,10 @@ async function startTest() {
     
     // BLOKOWANIE PRZYCISKU I WŁĄCZENIE ANIMACJI
     btn.disabled = true;
-    btn.classList.add('loading'); // Dodajemy klasę animacji kropek
+    btn.classList.add('loading'); 
 
     el('speed-value').innerText = "0.00";
-    reloadGauge(); // Resetuje zegar i skalę
+    reloadGauge(); 
     resetCharts();
 
     const gaugeInstance = getGaugeInstance();
@@ -40,77 +40,92 @@ async function startTest() {
         await new Promise(r => setTimeout(r, 800));
 
         // 1. PING
-        log(translations[lang].log_ping_start);
-        // Użycie Promise.race dla pingu
+        // USUNIĘTO: log(...)
         ping = await Promise.race([runPing(), timeout(3000)]);
         if (typeof ping !== 'number') throw new Error("Ping timeout");
         el('ping-text').textContent = ping.toFixed(1);
 
         // 2. DOWNLOAD
         el('card-down').classList.add('active');
-        log(translations[lang].log_down_start);
+        // USUNIĘTO: log(...)
         
-        // UŻYCIE PROMISE.RACE dla Download
         down = await Promise.race([runDownload(), timeout(TEST_DURATION + 1000)]); 
         
         el('down-val').textContent = formatSpeed(down); 
         el('card-down').classList.remove('active');
 
-        if (gaugeInstance) gaugeInstance.value = 0;
+        // STABILIZACJA
+        await new Promise(r => setTimeout(r, 200)); 
+
+        // OPADANIE WSKAZÓWKI
+        if (gaugeInstance) {
+            gaugeInstance.update({ animationDuration: 1200 }); 
+            gaugeInstance.value = 0;
+        }
         el('speed-value').innerText = "0.00";
-        await new Promise(r => setTimeout(r, 1000)); 
+        
+        await new Promise(r => setTimeout(r, 1200)); 
+        
+        if (gaugeInstance) {
+            gaugeInstance.update({ animationDuration: 100 }); 
+        }
 
         // 3. UPLOAD
         el('card-up').classList.add('active');
-        log(translations[lang].log_up_start);
+        // USUNIĘTO: log(...)
         
-        // UŻYCIE PROMISE.RACE dla Upload
         up = await Promise.race([runUpload(), timeout(TEST_DURATION + 1000)]);
         
         el('up-val').textContent = formatSpeed(up);
         el('card-up').classList.remove('active');
 
-        // 4. SAVE & CLEANUP
-        await saveResult(ping, down, up); 
-        
-        if (gaugeInstance) gaugeInstance.value = 0;
+        // STABILIZACJA
+        await new Promise(r => setTimeout(r, 200)); 
+
+        // OPADANIE WSKAZÓWKI
+        if (gaugeInstance) {
+            gaugeInstance.update({ animationDuration: 1200 });
+            gaugeInstance.value = 0;
+        }
         el('speed-value').innerText = "0.00";
+        
+        await new Promise(r => setTimeout(r, 1200));
+
+        if (gaugeInstance) {
+            gaugeInstance.update({ animationDuration: 100 });
+        }
+
+        // 4. SAVE
+        await saveResult(ping, down, up); 
         
     } catch (error) {
         console.error("Błąd podczas testu:", error);
         log(translations[lang].err + "Test przerwany: " + error.message);
     } finally {
-        // ODBLOKOWANIE PRZYCISKU I USUNIĘCIE ANIMACJI
         btn.disabled = false;
-        btn.classList.remove('loading'); // Usuwamy kropki, wraca tekst "START"
+        btn.classList.remove('loading'); 
         
-        // Dodatkowe, awaryjne powiadomienie
         if (ping > 0 && down > 0 && up > 0) {
-            // Jeśli test się udał, toast jest już pokazany w data_sync.js
+            // Toast sukcesu już obsłużony w data_sync.js
         } else {
             log(translations[lang].log_end + " Przycisk odblokowany.");
         }
     }
 }
 
-// --- Obsługa zdarzeń i inicjalizacja aplikacji ---
 window.onload = () => {
-    // Krok 1: Wczytujemy z localStorage
     const savedTheme = localStorage.getItem('ls_theme') || 'dark';
     document.body.setAttribute('data-theme', savedTheme);
     setLang(localStorage.getItem('ls_lang') || 'pl');
     setCurrentUnit(localStorage.getItem('ls_unit') || 'mbps');
     updateThemeIcon(savedTheme);
 
-    // Krok 2: Inicjalizacja komponentów UI
     initGauge();
     initCharts(); 
     initHistoryEvents();
 
-    // Krok 3: Wczytujemy ustawienia z serwera i historię
     loadSettings().then(() => loadHistory());
     
-    // --- OBSŁUGA ZDARZEŃ GLOBALNYCH ---
     el('start-btn').onclick = startTest;
 
     el('lang-toggle').onclick = () => { 
@@ -128,7 +143,6 @@ window.onload = () => {
         document.body.setAttribute('data-theme', next);
         updateThemeIcon(next);
         
-        // Przeładowanie zegara po zmianie motywu
         reloadGauge(); 
         updateTexts(getGaugeInstance()); 
 
@@ -142,7 +156,6 @@ window.onload = () => {
         setCurrentUnit(nextUnit);
         const currentTheme = document.body.getAttribute('data-theme');
         
-        // Przeładowanie zegara i odświeżenie kafelków/historii
         reloadGauge(); 
         updateTexts(getGaugeInstance());
         updateStatTiles(lastResultDown, lastResultUp); 
@@ -153,16 +166,13 @@ window.onload = () => {
         else log(translations[lang].msg_unit_mbs);
     };
 
-    // Zmiana rozmiaru okna
     let resizeTimeout;
     let lastWidth = window.innerWidth; 
 
     window.onresize = () => { 
         const currentWidth = window.innerWidth;
         if (currentWidth === lastWidth) return;
-
         lastWidth = currentWidth;
-        
         clearTimeout(resizeTimeout); 
         resizeTimeout = setTimeout(reloadGauge, 200); 
     };

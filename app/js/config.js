@@ -1,11 +1,10 @@
-// --- KONFIGURACJA 2.5 GBIT ---
 export const THREADS = 6; 
 export const TEST_DURATION = 12000; 
 
 export const translations = {
     pl: { 
         start: "START", 
-        history_title: "Historia Pomiarów", 
+        history_title: "Pomiary", 
         down: "Pobieranie", 
         up: "Wysyłanie", 
         
@@ -21,26 +20,22 @@ export const translations = {
         modal_delete_msg: "Czy na pewno chcesz usunąć zaznaczone wpisy?",
         modal_cancel: "Anuluj",
         modal_confirm: "Usuń",
-        msg_deleted: "Usunięto wybrane wpisy.",
+        msg_deleted: "Usunięto wpisy.",
 
         gauge_title: "PRĘDKOŚĆ",
 
-        log_start: "Start Testu...", 
-        log_ping_start: "Mierzenie Pingu...", 
-        log_ping_res: "Ping: ", 
-        log_down_start: "Rozpoczynanie pobierania...", 
-        log_up_start: "Rozpoczynanie wysyłania...", 
-        log_end: "Koniec Testu", 
+        log_start: "Start testu", 
+        log_end: "Koniec testu", 
         err: "Błąd: ",
-        msg_lang: "Zmieniono język na Polski",
-        msg_theme_dark: "Ustawiono motyw ciemny",
-        msg_theme_light: "Ustawiono motyw jasny",
-        msg_unit_mbps: "Zmieniono jednostkę na Mbps",
-        msg_unit_mbs: "Zmieniono jednostkę na MB/s"
+        msg_lang: "Zmieniono język",
+        msg_theme_dark: "Motyw ciemny",
+        msg_theme_light: "Motyw jasny",
+        msg_unit_mbps: "Zmieniono jednostkę: Mbps",
+        msg_unit_mbs: "Zmieniono jednostkę: MB/s"
     },
     en: { 
         start: "START", 
-        history_title: "Measurement History", 
+        history_title: "Measurements", 
         down: "Download", 
         up: "Upload", 
         
@@ -50,27 +45,23 @@ export const translations = {
         table_up: "Upload",
         rows_label: "Per page:",
 
-        btn_delete: "Delete Selected",
+        btn_delete: "Delete selected",
         btn_csv: "Export CSV",
         modal_delete_title: "Confirmation",
-        modal_delete_msg: "Are you sure you want to delete selected items?",
+        modal_delete_msg: "Are you sure you want to delete selected entries?",
         modal_cancel: "Cancel",
         modal_confirm: "Delete",
-        msg_deleted: "Selected items deleted.",
+        msg_deleted: "Entries deleted.",
 
         gauge_title: "SPEED",
 
-        log_start: "Starting Test...", 
-        log_ping_start: "Pinging...", 
-        log_ping_res: "Ping: ", 
-        log_down_start: "Starting Download...", 
-        log_up_start: "Starting Upload...", 
-        log_end: "Test Finished.", 
+        log_start: "Starting test", 
+        log_end: "Test finished.", 
         err: "Error: ",
-        msg_lang: "Language changed to English",
-        msg_theme_dark: "Dark theme enabled",
-        msg_theme_light: "Light theme enabled",
-        msg_unit_mbps: "Unit changed to Mbps",
-        msg_unit_mbs: "Unit changed to MB/s"
+        msg_lang: "Language changed",
+        msg_theme_dark: "Dark theme",
+        msg_theme_light: "Light theme",
+        msg_unit_mbps: "Unit changed: Mbps",
+        msg_unit_mbs: "Unit changed: MB/s"
     }
 };
