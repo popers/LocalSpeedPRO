@@ -6,8 +6,13 @@ header {
     justify-content: space-between; 
     align-items: center; 
     box-shadow: var(--shadow); 
-    z-index: 10;
+    
+    /* ZMIANY: Sticky Header */
+    position: sticky; /* Umożliwia przyklejenie elementu */
+    top: 0;           /* Pozycja 0 od górnej krawędzi */
+    z-index: 100;     /* Wysoki indeks, aby pasek był nad treścią (np. nad wykresami) */
 }
+
 .logo { font-weight: 700; font-size: 1.4rem; color: var(--primary); display: flex; align-items: center; gap: 8px; }
 
 .controls {
