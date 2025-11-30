@@ -74,8 +74,8 @@ async def auth_middleware(request: Request, call_next):
         "/api/auth/status",
         "/css", 
         "/js", 
-        "/favicon.ico",
-        "/favicon.svg" # Dodano obsługę SVG
+        # ZMIANA: Zezwalamy na dostęp do /favicon.ico i usuwamy /favicon.svg
+        "/favicon.ico"
     ]
     path = request.url.path
     is_public = any(path.startswith(p) for p in public_paths)
@@ -116,7 +116,8 @@ async def read_settings():
 async def read_login():
     return FileResponse(os.path.join(BASE_DIR, 'login.html'))
 
-# Endpoint dla favicony
-@app.get("/favicon.svg")
-async def favicon():
-    return FileResponse(os.path.join(BASE_DIR, 'favicon.svg'))
+# Endpoint dla favicony (teraz serwuje .ico)
+@app.get("/favicon.ico")
+async def favicon_ico():
+    # Zmieniono ścieżkę z 'favicon.svg' na 'favicon.ico'
+    return FileResponse(os.path.join(BASE_DIR, 'favicon.ico'), media_type='image/x-icon')
