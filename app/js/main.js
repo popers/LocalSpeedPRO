@@ -186,6 +186,13 @@ window.onload = () => {
     initMenu(); 
 
     loadSettings().then(() => loadHistory());
+
+    // --- POPRAWKA: Automatyczne odświeżanie tabeli po teście ---
+    window.addEventListener('historyUpdated', () => {
+        // Po otrzymaniu zdarzenia z data_sync.js, ładujemy 1. stronę historii
+        loadHistory(1);
+    });
+    // -----------------------------------------------------------
     
     const urlParams = new URLSearchParams(window.location.search);
     

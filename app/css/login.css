@@ -82,8 +82,33 @@ body {
 
 .btn-login:hover {
     transform: translateY(-2px);
-    /* ZMIANA: Dynamiczny cień RGB */
     box-shadow: 0 5px 15px rgba(var(--primary-rgb), 0.3);
+}
+
+/* --- OIDC Button Style --- */
+.btn-oidc {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-sizing: border-box;
+}
+
+.btn-oidc:hover {
+    background: rgba(128,128,128, 0.1);
+    border-color: var(--primary);
+    transform: translateY(-2px);
 }
 
 .error-msg {
@@ -117,7 +142,6 @@ body {
     min-width: 40px;
     border-radius: 50%;
     transition: background 0.2s;
-    
     backdrop-filter: blur(2px); 
 }
 

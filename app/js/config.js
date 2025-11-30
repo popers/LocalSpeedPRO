@@ -43,8 +43,14 @@ export const translations = {
         // --- SETTINGS PAGE ---
         settings_title: "Ustawienia",
         settings_appearance: "Wygląd",
+        settings_oidc_title: "Logowanie OIDC (SSO)",
+        settings_oidc_desc: "Skonfiguruj logowanie przez OpenID Connect (np. Authentik, Keycloak, Google).",
         lbl_primary_color: "Kolor wiodący",
-        lbl_theme_mode: "Tryb motywu",
+        lbl_oidc_enable: "Włącz logowanie OIDC",
+        lbl_oidc_discovery: "Discovery URL (.well-known):",
+        lbl_oidc_client_id: "Client ID:",
+        lbl_oidc_secret: "Client Secret:",
+        lbl_oidc_redirect: "Redirect URI (Callback) do wpisania u dostawcy:",
         btn_reset_color: "Przywróć domyślny",
 
         // --- LOGIN PAGE ---
@@ -52,6 +58,7 @@ export const translations = {
         login_user: "Użytkownik",
         login_pass: "Hasło",
         login_btn: "Zaloguj się",
+        login_oidc_btn: "Zaloguj przez OIDC",
         msg_login_success: "Zalogowano pomyślnie",
         msg_login_error: "Błędny login lub hasło",
         msg_logged_out: "Wylogowano pomyślnie",
@@ -98,8 +105,14 @@ export const translations = {
         // --- SETTINGS PAGE ---
         settings_title: "Settings",
         settings_appearance: "Appearance",
+        settings_oidc_title: "OIDC Login (SSO)",
+        settings_oidc_desc: "Configure OpenID Connect login (e.g. Authentik, Keycloak, Google).",
         lbl_primary_color: "Primary Color",
-        lbl_theme_mode: "Theme Mode",
+        lbl_oidc_enable: "Enable OIDC Login",
+        lbl_oidc_discovery: "Discovery URL (.well-known):",
+        lbl_oidc_client_id: "Client ID:",
+        lbl_oidc_secret: "Client Secret:",
+        lbl_oidc_redirect: "Redirect URI (Callback) to register with provider:",
         btn_reset_color: "Reset to default",
 
         // --- LOGIN PAGE ---
@@ -107,6 +120,7 @@ export const translations = {
         login_user: "Username",
         login_pass: "Password",
         login_btn: "Log in",
+        login_oidc_btn: "Log in with OIDC",
         msg_login_success: "Logged in successfully",
         msg_login_error: "Invalid username or password",
         msg_logged_out: "Logged out successfully",

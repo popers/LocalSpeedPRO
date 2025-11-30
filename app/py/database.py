@@ -3,7 +3,7 @@
 import os
 import datetime
 import logging
-from sqlalchemy import create_engine, Column, Integer, Float, String, func, desc, asc
+from sqlalchemy import create_engine, Column, Integer, Float, String, Boolean, func, desc, asc
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 
@@ -16,8 +16,6 @@ DB_PATH = os.path.join(BASE_DIR, "speedtest_final.db")
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
 
 # --- INICJALIZACJA BAZY DANYCH ---
-# check_same_thread=False jest potrzebne dla SQLite w FastAPI, aby umożliwić
-# wielu wątkom interakcję z bazą danych (standardowe zachowanie to jeden wątek).
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -39,8 +37,14 @@ class Settings(Base):
     lang = Column(String, default="en") 
     theme = Column(String, default="dark") 
     unit = Column(String, default="mbps")
-    # NOWE POLE: Kolor wiodący (Hex code, np. #6200ea)
     primary_color = Column(String, default="#6200ea")
+    
+    # --- Konfiguracja OIDC ---
+    # SQLite przechowuje Boolean jako 0/1
+    oidc_enabled = Column(Boolean, default=False)
+    oidc_discovery_url = Column(String, default="")
+    oidc_client_id = Column(String, default="")
+    oidc_client_secret = Column(String, default="")
 
 # Tworzenie tabel
 try:

@@ -5,7 +5,10 @@ import { initCharts } from './charts.js';
 
 export async function loadSettings() {
     try {
-        const res = await fetch('/api/settings');
+        // ZMIANA: Dodano cache: 'no-store' aby przeglądarka nie brała starych danych
+        const res = await fetch('/api/settings', { cache: "no-store" });
+        if (!res.ok) throw new Error("API Error");
+        
         const data = await res.json();
         
         let shouldReloadVisuals = false;
@@ -26,19 +29,13 @@ export async function loadSettings() {
             shouldReloadVisuals = true;
         }
         
-        // POPRAWKA: Obsługa null/brakującego koloru
         const incomingColor = data.primary_color;
-        // Sprawdzamy czy kolor się różni. Traktujemy null i "null" jako brak koloru.
         const effectiveCurrent = (primaryColor === 'null') ? null : primaryColor;
         
         if (incomingColor !== effectiveCurrent) {
             setPrimaryColor(incomingColor);
-            
-            if (incomingColor) {
-                localStorage.setItem('ls_primary_color', incomingColor);
-            } else {
-                localStorage.removeItem('ls_primary_color');
-            }
+            if (incomingColor) localStorage.setItem('ls_primary_color', incomingColor);
+            else localStorage.removeItem('ls_primary_color');
             shouldReloadVisuals = true;
         }
         
@@ -60,33 +57,22 @@ export async function saveSettings(newLang, newTheme, newUnit, newColor) {
     const l = newLang || lang;
     const t = newTheme || document.body.getAttribute('data-theme');
     const u = newUnit || currentUnit;
-    
-    // Specjalna obsługa koloru: jeśli explicitly passed as null, to null. Jeśli undefined, to obecny.
     let c = (newColor === null) ? null : (newColor || primaryColor);
-    
-    // Jeśli obecny kolor to string "null" (błąd), zamień na null
     if (c === 'null') c = null;
 
     localStorage.setItem('ls_lang', l);
     localStorage.setItem('ls_theme', t);
     localStorage.setItem('ls_unit', u);
     
-    // POPRAWKA: Nie zapisuj "null" jako string
-    if (c) {
-        localStorage.setItem('ls_primary_color', c);
-    } else {
-        localStorage.removeItem('ls_primary_color');
-    }
+    if (c) localStorage.setItem('ls_primary_color', c);
+    else localStorage.removeItem('ls_primary_color');
     
     try {
         await fetch('/api/settings', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ 
-                lang: l, 
-                theme: t, 
-                unit: u,
-                primary_color: c
+                lang: l, theme: t, unit: u, primary_color: c
             })
         });
     } catch(e) { 
@@ -137,12 +123,7 @@ export async function deleteItems(ids) {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(ids)
         });
-        
-        if (res.ok) {
-            return true;
-        } else {
-            throw new Error("Delete failed");
-        }
+        return res.ok;
     } catch(e) {
         console.error("Delete error", e);
         log(translations[lang].err + "Nie udało się usunąć wpisów.");

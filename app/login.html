@@ -17,19 +17,15 @@
                 let c;
                 if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
                     c= hex.substring(1).split('');
-                    if(c.length== 3){
-                        c= [c[0], c[0], c[1], c[1], c[2], c[2]];
-                    }
+                    if(c.length== 3) c= [c[0], c[0], c[1], c[1], c[2], c[2]];
                     c= '0x'+c.join('');
                     return [(c>>16)&255, (c>>8)&255, c&255].join(', ');
                 }
                 return null;
             }
-
             const savedTheme = localStorage.getItem('ls_theme') || 'dark';
             document.documentElement.setAttribute('data-theme', savedTheme);
             const savedColor = localStorage.getItem('ls_primary_color');
-            // POPRAWKA: Zabezpieczenie przed "null"
             if(savedColor && savedColor !== 'null') {
                 document.documentElement.style.setProperty('--primary', savedColor);
                 const rgb = hexToRgb(savedColor);
@@ -65,6 +61,14 @@
             </div>
             
             <button type="submit" class="btn-login" data-key="login_btn">Zaloguj się</button>
+            
+            <!-- Kontener na przycisk OIDC -->
+            <div id="oidc-container" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">
+                <a href="/api/auth/oidc/login" class="btn-oidc" data-key="login_oidc_btn">
+                    <span class="material-icons">fingerprint</span> Zaloguj przez OIDC
+                </a>
+            </div>
+
             <div id="error-message" class="error-msg"></div>
         </form>
     </div>
@@ -72,9 +76,8 @@
     <div id="toast-container"></div>
 
     <script type="module">
-        import { log, setLang, lang, updateThemeIcon, setPrimaryColor } from '/js/utils.js';
+        import { log, setLang, lang, updateThemeIcon } from '/js/utils.js';
         import { translations } from '/js/config.js';
-        import { loadSettings } from '/js/data_sync.js';
 
         const form = document.getElementById('login-form');
         const errorDiv = document.getElementById('error-message');
@@ -86,24 +89,54 @@
             document.querySelectorAll('[data-key]').forEach(elem => {
                 const key = elem.getAttribute('data-key');
                 if (translations[lang][key]) {
-                    elem.innerText = translations[lang][key];
+                    // Dla <a> musimy zachować HTML (ikonę)
+                    if(elem.tagName === 'A') {
+                        const icon = elem.querySelector('.material-icons').outerHTML;
+                        elem.innerHTML = icon + " " + translations[lang][key];
+                    } else {
+                        elem.innerText = translations[lang][key];
+                    }
                 }
             });
         }
-
-        const savedTheme = localStorage.getItem('ls_theme') || 'dark';
-        document.body.setAttribute('data-theme', savedTheme);
-        updateThemeIcon(savedTheme);
         
-        const savedLang = localStorage.getItem('ls_lang') || 'en';
-        setLang(savedLang);
-        updateLoginTexts();
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('logout') === 'true') {
-            log(translations[lang].msg_logged_out);
-            window.history.replaceState({}, document.title, window.location.pathname);
+        // --- SPRAWDZANIE STATUSU OIDC ---
+        async function checkOidcStatus() {
+            try {
+                const res = await fetch('/api/auth/status');
+                if(res.ok) {
+                    const data = await res.json();
+                    if(data.oidc_enabled) {
+                        document.getElementById('oidc-container').style.display = 'block';
+                    }
+                }
+            } catch(e) { console.error("Auth status check failed", e); }
         }
+
+        window.onload = () => {
+            const savedTheme = localStorage.getItem('ls_theme') || 'dark';
+            document.body.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+            const savedLang = localStorage.getItem('ls_lang') || 'en';
+            setLang(savedLang);
+            updateLoginTexts();
+            
+            checkOidcStatus(); // Sprawdź czy pokazać przycisk OIDC
+
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('logout') === 'true') {
+                log(translations[lang].msg_logged_out);
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            // Obsługa błędów OIDC
+            if (urlParams.get('error')) {
+                const errCode = urlParams.get('error');
+                let msg = translations[lang].msg_oidc_error || "Błąd logowania OIDC";
+                if(errCode.includes('discovery')) msg += " (Discovery)";
+                errorDiv.innerText = msg;
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        };
 
         themeBtn.onclick = () => {
             const current = document.body.getAttribute('data-theme');
