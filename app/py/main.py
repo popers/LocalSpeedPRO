@@ -74,7 +74,7 @@ async def auth_middleware(request: Request, call_next):
         "/api/auth/status",
         "/css", 
         "/js", 
-        # ZMIANA: Zezwalamy na dostęp do /favicon.ico i usuwamy /favicon.svg
+        # ZMIANA: Zezwalamy na dostęp tylko do /favicon.ico (usunęto /favicon.svg)
         "/favicon.ico"
     ]
     path = request.url.path
