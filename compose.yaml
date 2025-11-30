@@ -5,10 +5,12 @@ services:
     ports:
       - 8002:80
     restart: unless-stopped
-    # Zwiększamy ilość workerów uvicorn, aby obsłużyć równoległe żądania
     environment:
       - WEB_CONCURRENCY=8
-      - TZ=Europe/Amsterdam
+      - TZ=Europe/Warsaw
+      # Domyślne dane logowania (zmienne pobierane z .env)
+      - APP_USER=${APP_USER:-admin}
+      - APP_PASSWORD=${APP_PASSWORD:-admin}
     volumes:
       - ./app:/app
 networks: {}

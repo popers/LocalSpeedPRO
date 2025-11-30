@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalSpeed Pro - Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/login.css">
+    <link rel="stylesheet" href="/css/toast.css">
+</head>
+<body>
+
+    <!-- Kontrolki w prawym górnym rogu -->
+    <div class="controls-wrapper">
+        <button id="lang-toggle" class="btn-icon" aria-label="Język"><span>PL</span></button>
+        <button id="theme-toggle" class="btn-icon" aria-label="Motyw">
+            <span class="material-icons" id="theme-icon">dark_mode</span>
+        </button>
+    </div>
+
+    <div class="login-container">
+        <div class="login-header">
+            <span class="material-icons">lock</span>
+            <h2 data-key="login_header">LocalSpeed PRO</h2>
+        </div>
+        
+        <form id="login-form">
+            <div class="form-group">
+                <label for="username" data-key="login_user">Użytkownik</label>
+                <input type="text" id="username" name="username" required autocomplete="username">
+            </div>
+            
+            <div class="form-group">
+                <label for="password" data-key="login_pass">Hasło</label>
+                <input type="password" id="password" name="password" required autocomplete="current-password">
+            </div>
+            
+            <button type="submit" class="btn-login" data-key="login_btn">Zaloguj się</button>
+            <div id="error-message" class="error-msg"></div>
+        </form>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <!-- Używamy type="module" aby importować funkcje z utils.js i config.js -->
+    <script type="module">
+        import { log, setLang, lang, updateThemeIcon } from '/js/utils.js';
+        import { translations } from '/js/config.js';
+
+        const form = document.getElementById('login-form');
+        const errorDiv = document.getElementById('error-message');
+        const langBtn = document.getElementById('lang-toggle');
+        const themeBtn = document.getElementById('theme-toggle');
+
+        // Funkcja do aktualizacji tekstów na stronie logowania
+        function updateLoginTexts() {
+            // Aktualizacja przycisku języka - pokazuje AKTUALNY język (PL/EN)
+            langBtn.innerText = lang.toUpperCase();
+
+            // Aktualizacja tekstów z atrybutem data-key
+            document.querySelectorAll('[data-key]').forEach(elem => {
+                const key = elem.getAttribute('data-key');
+                if (translations[lang][key]) {
+                    elem.innerText = translations[lang][key];
+                }
+            });
+        }
+
+        // INIT
+        const savedTheme = localStorage.getItem('ls_theme') || 'dark';
+        document.body.setAttribute('data-theme', savedTheme);
+        updateThemeIcon(savedTheme);
+        
+        // Wczytanie języka z localStorage
+        const savedLang = localStorage.getItem('ls_lang') || 'pl';
+        setLang(savedLang);
+        updateLoginTexts();
+
+        // Sprawdzenie czy użytkownik został właśnie wylogowany
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('logout') === 'true') {
+            log(translations[lang].msg_logged_out);
+            // Wyczyszczenie URL aby po odświeżeniu nie pokazywać komunikatu ponownie
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        // OBSŁUGA MOTYWU
+        themeBtn.onclick = () => {
+            const current = document.body.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            
+            document.body.setAttribute('data-theme', next);
+            localStorage.setItem('ls_theme', next);
+            updateThemeIcon(next);
+            
+            if(next === 'dark') log(translations[lang].msg_theme_dark);
+            else log(translations[lang].msg_theme_light);
+        };
+
+        // OBSŁUGA JĘZYKA
+        langBtn.onclick = () => {
+            const nextLang = lang === 'pl' ? 'en' : 'pl';
+            setLang(nextLang);
+            localStorage.setItem('ls_lang', nextLang);
+            updateLoginTexts();
+            log(translations[lang].msg_lang);
+        };
+
+        // OBSŁUGA LOGOWANIA
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            errorDiv.innerText = '';
+            
+            const username = form.username.value;
+            const password = form.password.value;
+            
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (res.ok) {
+                    // ZMIANA: Przekierowanie natychmiastowe z parametrem
+                    // Powiadomienie "Zalogowano pomyślnie" zostanie wyświetlone na stronie głównej (main.js)
+                    window.location.href = '/?login=success';
+                } else {
+                    const data = await res.json();
+                    errorDiv.innerText = translations[lang].msg_login_error || (data.detail || "Error");
+                    
+                    // Shake effect
+                    const container = document.querySelector('.login-container');
+                    container.style.animation = 'none';
+                    container.offsetHeight; /* trigger reflow */
+                    container.style.animation = 'shake 0.5s';
+                }
+            } catch (err) {
+                console.error(err);
+                errorDiv.innerText = translations[lang].err_server;
+            }
+        };
+
+        // Dodanie animacji trzęsienia dynamicznie
+        const style = document.createElement('style');
+        style.innerHTML = `
+            @keyframes shake {
+                0% { transform: translateX(0); }
+                25% { transform: translateX(-10px); }
+                50% { transform: translateX(10px); }
+                75% { transform: translateX(-10px); }
+                100% { transform: translateX(0); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

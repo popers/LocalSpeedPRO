@@ -19,6 +19,18 @@ import { loadSettings, saveSettings, saveResult } from '/js/data_sync.js';
 import { initHistoryEvents, loadHistory, updateStatTiles } from '/js/history_ui.js';
 import { runPing, runDownload, runUpload } from '/js/speedtest.js';
 
+// --- OBSŁUGA WYLOGOWANIA ---
+async function handleLogout() {
+    try {
+        await fetch('/api/logout', { method: 'POST' });
+        // Przekierowanie z parametrem, aby login.html wiedział, że ma pokazać toast
+        window.location.href = '/login.html?logout=true';
+    } catch (e) {
+        console.error("Logout failed", e);
+        window.location.href = '/login.html';
+    }
+}
+
 // --- Główna funkcja uruchamiająca test ---
 async function startTest() {
     const btn = el('start-btn');
@@ -40,14 +52,12 @@ async function startTest() {
         await new Promise(r => setTimeout(r, 800));
 
         // 1. PING
-        // USUNIĘTO: log(...)
         ping = await Promise.race([runPing(), timeout(3000)]);
         if (typeof ping !== 'number') throw new Error("Ping timeout");
         el('ping-text').textContent = ping.toFixed(1);
 
         // 2. DOWNLOAD
         el('card-down').classList.add('active');
-        // USUNIĘTO: log(...)
         
         down = await Promise.race([runDownload(), timeout(TEST_DURATION + 1000)]); 
         
@@ -72,7 +82,6 @@ async function startTest() {
 
         // 3. UPLOAD
         el('card-up').classList.add('active');
-        // USUNIĘTO: log(...)
         
         up = await Promise.race([runUpload(), timeout(TEST_DURATION + 1000)]);
         
@@ -101,6 +110,12 @@ async function startTest() {
     } catch (error) {
         console.error("Błąd podczas testu:", error);
         log(translations[lang].err + "Test przerwany: " + error.message);
+        
+        // Jeśli błąd 401 (Unauthorized) podczas testu, przekieruj
+        if(error.message.includes('401') || error.status === 401) {
+            window.location.href = '/login.html';
+        }
+
     } finally {
         btn.disabled = false;
         btn.classList.remove('loading'); 
@@ -126,7 +141,25 @@ window.onload = () => {
 
     loadSettings().then(() => loadHistory());
     
+    // --- OBSŁUGA POWIADOMIENIA O ZALOGOWANIU ---
+    // Sprawdzamy czy URL zawiera ?login=success
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('login') === 'success') {
+        // Małe opóźnienie, aby interfejs zdążył się wyrenderować
+        setTimeout(() => {
+            log(translations[lang].msg_login_success);
+        }, 500);
+        // Czyszczenie URL z parametrów (bez przeładowania strony)
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     el('start-btn').onclick = startTest;
+
+    // Przycisk wylogowania
+    const logoutBtn = el('logout-btn');
+    if(logoutBtn) {
+        logoutBtn.onclick = handleLogout;
+    }
 
     el('lang-toggle').onclick = () => { 
         const nextLang = lang === 'pl' ? 'en' : 'pl'; 

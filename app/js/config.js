@@ -31,7 +31,17 @@ export const translations = {
         msg_theme_dark: "Motyw ciemny",
         msg_theme_light: "Motyw jasny",
         msg_unit_mbps: "Zmieniono jednostkę: Mbps",
-        msg_unit_mbs: "Zmieniono jednostkę: MB/s"
+        msg_unit_mbs: "Zmieniono jednostkę: MB/s",
+
+        // --- LOGIN PAGE ---
+        login_header: "LocalSpeed PRO",
+        login_user: "Użytkownik",
+        login_pass: "Hasło",
+        login_btn: "Zaloguj się",
+        msg_login_success: "Zalogowano pomyślnie",
+        msg_login_error: "Błędny login lub hasło",
+        msg_logged_out: "Wylogowano pomyślnie",
+        err_server: "Błąd połączenia z serwerem"
     },
     en: { 
         start: "START", 
@@ -62,6 +72,16 @@ export const translations = {
         msg_theme_dark: "Dark theme",
         msg_theme_light: "Light theme",
         msg_unit_mbps: "Unit changed: Mbps",
-        msg_unit_mbs: "Unit changed: MB/s"
+        msg_unit_mbs: "Unit changed: MB/s",
+
+        // --- LOGIN PAGE ---
+        login_header: "LocalSpeed PRO",
+        login_user: "Username",
+        login_pass: "Password",
+        login_btn: "Log in",
+        msg_login_success: "Logged in successfully",
+        msg_login_error: "Invalid username or password",
+        msg_logged_out: "Logged out successfully",
+        err_server: "Server connection error"
     }
 };
