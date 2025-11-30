@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <defs>
+    <!-- Liniowy gradient symulujący lekką głębię, kolor bazowy fioletowy -->
+    <linearGradient id="grad_depth" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#bb86fc;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6200ea;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Pełne koło jako baza tarczy w kolorze fioletowym z gradientem -->
+  <circle cx="12" cy="12" r="10" fill="url(#grad_depth)" />
+  
+  <!-- Otwarty łuk, jak w Material Icon, oznaczający aktywną skalę -->
+  <!-- Używamy koloru tła (lub bardzo ciemnego, jeśli tło jest jasne), aby wyciąć łuk -->
+  <path d="M12 2A10 10 0 0 0 2 12h2a8 8 0 0 1 16 0h2A10 10 0 0 0 12 2z" 
+        fill="#121212" opacity="0.1"/>
+
+  <!-- Wskazówka - Biała, pogrubiona dla lepszej widoczności, ustawiona na 45 stopni -->
+  <g transform="rotate(45, 12, 12)">
+    <!-- Ostrze wskazówki -->
+    <path d="M12 11 L10.5 12 L12 4 L13.5 12 Z" fill="#ffffff"/>
+    <!-- Środek (Piasta) - małe kółko o wysokim kontraście -->
+    <circle cx="12" cy="12" r="2.5" fill="#ffffff"/>
+    <circle cx="12" cy="12" r="1" fill="#6200ea"/>
+  </g>
+  
+  <!-- Zewnętrzna ramka/obwódka (opcjonalnie) -->
+  <circle cx="12" cy="12" r="11" fill="none" stroke="#6200ea" stroke-width="1"/>
+</svg>
