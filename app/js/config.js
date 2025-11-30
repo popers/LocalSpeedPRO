@@ -33,6 +33,10 @@ export const translations = {
         msg_unit_mbps: "Zmieniono jednostkę: Mbps",
         msg_unit_mbs: "Zmieniono jednostkę: MB/s",
 
+        // --- MENU ---
+        nav_dashboard: "Panel Główny",
+        nav_measurements: "Pomiary",
+
         // --- LOGIN PAGE ---
         login_header: "LocalSpeed PRO",
         login_user: "Użytkownik",
@@ -73,6 +77,10 @@ export const translations = {
         msg_theme_light: "Light theme",
         msg_unit_mbps: "Unit changed: Mbps",
         msg_unit_mbs: "Unit changed: MB/s",
+
+        // --- MENU ---
+        nav_dashboard: "Dashboard",
+        nav_measurements: "Measurements",
 
         // --- LOGIN PAGE ---
         login_header: "LocalSpeed PRO",

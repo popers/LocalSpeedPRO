@@ -7,168 +7,191 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     
-    <!-- CSS - Teraz serwowane automatycznie przez app.mount("/css") -->
+    <!-- CSS -->
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/header.css">
+    <link rel="stylesheet" href="/css/sidebar.css">
     <link rel="stylesheet" href="/css/dashboard.css">
     <link rel="stylesheet" href="/css/gauge.css">
     <link rel="stylesheet" href="/css/stats.css">
     <link rel="stylesheet" href="/css/history.css">
     <link rel="stylesheet" href="/css/toast.css">
     
-    <!-- Biblioteki zewnętrzne -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/canvas-gauges@2.1.7/gauge.min.js"></script>
 </head>
 <body>
 
+    <!-- Overlay dla menu mobilnego -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- HEADER: Teraz wyjęty przed app-layout, na samej górze -->
     <header>
-        <div class="logo">
-            <span class="material-icons">speed</span>
-            LocalSpeed <small style="font-size: 0.6em; opacity: 0.7; margin-left: 5px;">PRO</small>
+        <div class="header-left">
+            <!-- Przycisk Hamburgera -->
+            <button id="menu-toggle" class="menu-toggle" aria-label="Menu">
+                <span class="material-icons">menu</span>
+            </button>
+
+            <div class="logo">
+                <span class="material-icons">speed</span>
+                LocalSpeed <small style="font-size: 0.6em; opacity: 0.7; margin-left: 5px;">PRO</small>
+            </div>
         </div>
+
         <div class="controls">
             <button id="lang-toggle" class="btn-icon" aria-label="Język"><span>EN</span></button>
             <button id="theme-toggle" class="btn-icon" aria-label="Motyw"><span class="material-icons" id="theme-icon">dark_mode</span></button>
-            <!-- Przycisk wylogowania -->
             <button id="logout-btn" class="btn-icon" aria-label="Wyloguj" title="Wyloguj się">
                 <span class="material-icons">logout</span>
             </button>
         </div>
     </header>
 
-    <main>
-        <div class="dashboard-container">
+    <!-- Główny układ Layoutu -->
+    <div class="app-layout">
+        
+        <!-- MENU BOCZNE -->
+        <aside class="sidebar" id="app-sidebar">
             
-            <div class="gauge-section">
-                <!-- Analogowy Zegar -->
-                <canvas id="speed-gauge"></canvas>
-                
-                <!-- Licznik pod zegarem -->
-                <div class="digital-box">
-                    <span id="speed-value">0.00</span>
-                </div>
-
-                <div class="ping-display">
-                    <span class="material-icons">network_check</span>
-                    <span id="ping-text">--</span> ms
-                </div>
-                
-                <button id="unit-toggle" class="unit-switch" title="Przełącz jednostkę">Mbps</button>
+            <!-- Nagłówek tylko dla mobile (wewnątrz menu) -->
+            <div class="sidebar-mobile-header">
+                <span class="material-icons">speed</span>
+                LocalSpeed PRO
             </div>
 
-            <div class="stats-section">
+            <!-- Linki nawigacyjne -->
+            <nav>
+                <a href="#" class="nav-link" id="nav-dashboard">
+                    <span class="material-icons">dashboard</span>
+                    <span data-key="nav_dashboard">Panel Główny</span>
+                </a>
                 
-                <div class="stat-card" id="card-down">
-                    <canvas id="chart-down" class="bg-chart"></canvas>
-                    <div class="stat-content-wrapper">
-                        <div class="stat-icon"><span class="material-icons">download</span></div>
-                        <div class="stat-info">
-                            <div class="stat-label" data-key="down">Pobieranie</div>
-                            <div class="stat-value">
-                                <span id="down-val">--</span> 
-                                <small class="unit-label">Mbps</small>
+                <a href="#history-section" class="nav-link" id="nav-history">
+                    <span class="material-icons">history</span>
+                    <span data-key="nav_measurements">Pomiary</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Treść Główna: Teraz bezpośrednio w app-layout, bez wrappera -->
+        <main>
+            <div class="dashboard-container">
+                
+                <div class="gauge-section">
+                    <canvas id="speed-gauge"></canvas>
+                    <div class="digital-box">
+                        <span id="speed-value">0.00</span>
+                    </div>
+                    <div class="ping-display">
+                        <span class="material-icons">network_check</span>
+                        <span id="ping-text">--</span> ms
+                    </div>
+                    <button id="unit-toggle" class="unit-switch" title="Przełącz jednostkę">Mbps</button>
+                </div>
+
+                <div class="stats-section">
+                    <div class="stat-card" id="card-down">
+                        <canvas id="chart-down" class="bg-chart"></canvas>
+                        <div class="stat-content-wrapper">
+                            <div class="stat-icon"><span class="material-icons">download</span></div>
+                            <div class="stat-info">
+                                <div class="stat-label" data-key="down">Pobieranie</div>
+                                <div class="stat-value">
+                                    <span id="down-val">--</span> 
+                                    <small class="unit-label">Mbps</small>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="stat-card" id="card-up">
-                    <canvas id="chart-up" class="bg-chart"></canvas>
-                    <div class="stat-content-wrapper">
-                        <div class="stat-icon"><span class="material-icons">upload</span></div>
-                        <div class="stat-info">
-                            <div class="stat-label" data-key="up">Wysyłanie</div>
-                            <div class="stat-value">
-                                <span id="up-val">--</span> 
-                                <small class="unit-label">Mbps</small>
+                    <div class="stat-card" id="card-up">
+                        <canvas id="chart-up" class="bg-chart"></canvas>
+                        <div class="stat-content-wrapper">
+                            <div class="stat-icon"><span class="material-icons">upload</span></div>
+                            <div class="stat-info">
+                                <div class="stat-label" data-key="up">Wysyłanie</div>
+                                <div class="stat-value">
+                                    <span id="up-val">--</span> 
+                                    <small class="unit-label">Mbps</small>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="action-area">
-                    <button id="start-btn" class="btn-primary" data-key="start">START</button>
-                </div>
-
-            </div>
-        </div>
-
-        <div class="bottom-section">
-            <div class="history-container">
-                <div class="history-header">
-                    <h3 data-key="history_title">Historia Pomiarów</h3>
-                    
-                    <div class="history-actions">
-                        <!-- Przycisk Usuwania (Domyslnie ukryty) -->
-                        <button id="delete-selected-btn" class="btn-danger hidden">
-                            <span class="material-icons">delete</span>
-                            <span data-key="btn_delete">Usuń zaznaczone</span>
-                            <span id="selected-count">(0)</span>
-                        </button>
-                        
-                        <!-- Przycisk Eksportu CSV -->
-                        <button id="export-csv-btn" class="btn-csv" title="Eksportuj do CSV">
-                            <span class="material-icons">file_download</span>
-                            <span data-key="btn_csv">Eksport CSV</span>
-                        </button>
+                    <div class="action-area">
+                        <button id="start-btn" class="btn-primary" data-key="start">START</button>
                     </div>
                 </div>
-                
-                <div class="table-wrapper">
-                    <table id="history-table">
-                        <thead>
-                            <tr>
-                                <th class="checkbox-col">
-                                    <input type="checkbox" id="select-all-checkbox">
-                                </th>
-                                <th class="sortable" data-sort="date">
-                                    <span data-key="table_date">Data</span> 
-                                    <span class="sort-icon material-icons">unfold_more</span>
-                                </th>
-                                <th class="sortable" data-sort="ping">
-                                    <span data-key="table_ping">Ping</span>
-                                    <span class="sort-icon material-icons">unfold_more</span>
-                                </th>
-                                <th class="sortable" data-sort="download">
-                                    <span data-key="table_down">Download</span>
-                                    <span class="sort-icon material-icons">unfold_more</span>
-                                </th>
-                                <th class="sortable" data-sort="upload">
-                                    <span data-key="table_up">Upload</span>
-                                    <span class="sort-icon material-icons">unfold_more</span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- JS wypełni to -->
-                        </tbody>
-                    </table>
-                </div>
+            </div>
 
-                <div class="pagination-controls">
-                    <div class="rows-selector">
-                        <span data-key="rows_label">Na stronę:</span>
-                        <select id="rows-per-page">
-                            <option value="5">5</option>
-                            <option value="10" selected>10</option>
-                            <option value="25">25</option>
-                            <option value="50">50</option>
-                        </select>
+            <div class="bottom-section">
+                <div class="history-container" id="history-section">
+                    <div class="history-header">
+                        <h3 data-key="history_title">Historia Pomiarów</h3>
+                        <div class="history-actions">
+                            <button id="delete-selected-btn" class="btn-danger hidden">
+                                <span class="material-icons">delete</span>
+                                <span data-key="btn_delete">Usuń zaznaczone</span>
+                                <span id="selected-count">(0)</span>
+                            </button>
+                            <button id="export-csv-btn" class="btn-csv" title="Eksportuj do CSV">
+                                <span class="material-icons">file_download</span>
+                                <span data-key="btn_csv">Eksport CSV</span>
+                            </button>
+                        </div>
                     </div>
                     
-                    <div class="page-nav">
-                        <button id="prev-page" class="btn-icon small"><span class="material-icons">chevron_left</span></button>
-                        <span id="page-info">1 / 1</span>
-                        <button id="next-page" class="btn-icon small"><span class="material-icons">chevron_right</span></button>
+                    <div class="table-wrapper">
+                        <table id="history-table">
+                            <thead>
+                                <tr>
+                                    <th class="checkbox-col">
+                                        <input type="checkbox" id="select-all-checkbox">
+                                    </th>
+                                    <th class="sortable" data-sort="date">
+                                        <span data-key="table_date">Data</span> 
+                                        <span class="sort-icon material-icons">unfold_more</span>
+                                    </th>
+                                    <th class="sortable" data-sort="ping">
+                                        <span data-key="table_ping">Ping</span>
+                                        <span class="sort-icon material-icons">unfold_more</span>
+                                    </th>
+                                    <th class="sortable" data-sort="download">
+                                        <span data-key="table_down">Download</span>
+                                        <span class="sort-icon material-icons">unfold_more</span>
+                                    </th>
+                                    <th class="sortable" data-sort="upload">
+                                        <span data-key="table_up">Upload</span>
+                                        <span class="sort-icon material-icons">unfold_more</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <div class="pagination-controls">
+                        <div class="rows-selector">
+                            <span data-key="rows_label">Na stronę:</span>
+                            <select id="rows-per-page">
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                        <div class="page-nav">
+                            <button id="prev-page" class="btn-icon small"><span class="material-icons">chevron_left</span></button>
+                            <span id="page-info">1 / 1</span>
+                            <button id="next-page" class="btn-icon small"><span class="material-icons">chevron_right</span></button>
+                        </div>
                     </div>
                 </div>
-
             </div>
-        </div>
-    </main>
+        </main>
+    </div> <!-- End app-layout -->
 
-    <!-- Modal Potwierdzenia -->
     <div id="delete-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <h4 data-key="modal_delete_title">Potwierdzenie</h4>
@@ -181,8 +204,6 @@
     </div>
 
     <div id="toast-container"></div>
-
-    <!-- Moduły JS - Serwowane przez app.mount("/js") -->
     <script type="module" src="/js/main.js"></script>
 </body>
 </html>

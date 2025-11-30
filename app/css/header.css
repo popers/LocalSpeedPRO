@@ -1,19 +1,49 @@
 /* HEADER */
 header { 
     background: var(--surface); 
-    padding: 1rem 2rem; 
+    padding: 0 2rem; /* Padding tylko poziomy, wysokość ustala height */
     display: flex; 
     justify-content: space-between; 
     align-items: center; 
     box-shadow: var(--shadow); 
     
-    /* ZMIANY: Sticky Header */
-    position: sticky; /* Umożliwia przyklejenie elementu */
-    top: 0;           /* Pozycja 0 od górnej krawędzi */
-    z-index: 100;     /* Wysoki indeks, aby pasek był nad treścią (np. nad wykresami) */
+    /* ZMIANA: Fixed position na samej górze */
+    position: fixed; 
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: var(--header-height);
+    box-sizing: border-box;
+    z-index: 1000; /* Musi być najwyżej */
 }
 
-.logo { font-weight: 700; font-size: 1.4rem; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+.logo { 
+    font-weight: 700; 
+    font-size: 1.4rem; 
+    color: var(--primary); 
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Przycisk Hamburgera (Tylko Mobile) */
+.menu-toggle {
+    display: none; 
+    background: none;
+    border: none;
+    color: var(--text);
+    cursor: pointer;
+    padding: 5px;
+}
+.menu-toggle .material-icons {
+    font-size: 28px;
+}
 
 .controls {
     display: flex;
@@ -28,7 +58,7 @@ header {
     cursor: pointer; 
     padding: 8px; 
     font-weight: bold;
-    font-size: 1.2rem; /* ZWIĘKSZONO: Aby PL/EN pasowało wielkością do ikon */
+    font-size: 1.2rem; 
     display: flex;            
     align-items: center;      
     justify-content: center;  
@@ -40,3 +70,12 @@ header {
 
 .btn-icon:hover { background: rgba(128, 128, 128, 0.1); }
 .btn-icon:disabled { opacity: 0.3; cursor: not-allowed; }
+
+@media (max-width: 900px) {
+    .menu-toggle {
+        display: flex;
+    }
+    header {
+        padding: 0 1rem;
+    }
+}

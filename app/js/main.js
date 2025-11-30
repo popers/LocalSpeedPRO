@@ -23,7 +23,6 @@ import { runPing, runDownload, runUpload } from '/js/speedtest.js';
 async function handleLogout() {
     try {
         await fetch('/api/logout', { method: 'POST' });
-        // Przekierowanie z parametrem, aby login.html wiedział, że ma pokazać toast
         window.location.href = '/login.html?logout=true';
     } catch (e) {
         console.error("Logout failed", e);
@@ -35,7 +34,6 @@ async function handleLogout() {
 async function startTest() {
     const btn = el('start-btn');
     
-    // BLOKOWANIE PRZYCISKU I WŁĄCZENIE ANIMACJI
     btn.disabled = true;
     btn.classList.add('loading'); 
 
@@ -58,51 +56,35 @@ async function startTest() {
 
         // 2. DOWNLOAD
         el('card-down').classList.add('active');
-        
         down = await Promise.race([runDownload(), timeout(TEST_DURATION + 1000)]); 
-        
         el('down-val').textContent = formatSpeed(down); 
         el('card-down').classList.remove('active');
 
-        // STABILIZACJA
         await new Promise(r => setTimeout(r, 200)); 
 
-        // OPADANIE WSKAZÓWKI
         if (gaugeInstance) {
             gaugeInstance.update({ animationDuration: 1200 }); 
             gaugeInstance.value = 0;
         }
         el('speed-value').innerText = "0.00";
-        
         await new Promise(r => setTimeout(r, 1200)); 
-        
-        if (gaugeInstance) {
-            gaugeInstance.update({ animationDuration: 100 }); 
-        }
+        if (gaugeInstance) gaugeInstance.update({ animationDuration: 100 }); 
 
         // 3. UPLOAD
         el('card-up').classList.add('active');
-        
         up = await Promise.race([runUpload(), timeout(TEST_DURATION + 1000)]);
-        
         el('up-val').textContent = formatSpeed(up);
         el('card-up').classList.remove('active');
 
-        // STABILIZACJA
         await new Promise(r => setTimeout(r, 200)); 
 
-        // OPADANIE WSKAZÓWKI
         if (gaugeInstance) {
             gaugeInstance.update({ animationDuration: 1200 });
             gaugeInstance.value = 0;
         }
         el('speed-value').innerText = "0.00";
-        
         await new Promise(r => setTimeout(r, 1200));
-
-        if (gaugeInstance) {
-            gaugeInstance.update({ animationDuration: 100 });
-        }
+        if (gaugeInstance) gaugeInstance.update({ animationDuration: 100 });
 
         // 4. SAVE
         await saveResult(ping, down, up); 
@@ -111,7 +93,6 @@ async function startTest() {
         console.error("Błąd podczas testu:", error);
         log(translations[lang].err + "Test przerwany: " + error.message);
         
-        // Jeśli błąd 401 (Unauthorized) podczas testu, przekieruj
         if(error.message.includes('401') || error.status === 401) {
             window.location.href = '/login.html';
         }
@@ -121,17 +102,79 @@ async function startTest() {
         btn.classList.remove('loading'); 
         
         if (ping > 0 && down > 0 && up > 0) {
-            // Toast sukcesu już obsłużony w data_sync.js
+            // Sukces obsłużony w data_sync
         } else {
             log(translations[lang].log_end + " Przycisk odblokowany.");
         }
     }
 }
 
+// --- OBSŁUGA MENU ---
+function initMenu() {
+    const sidebar = el('app-sidebar');
+    const overlay = el('sidebar-overlay');
+    const menuToggle = el('menu-toggle');
+    const navDashboard = el('nav-dashboard');
+    const navHistory = el('nav-history');
+
+    function closeMenu() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+        document.body.classList.remove('menu-open');
+    }
+
+    function openMenu() {
+        sidebar.classList.add('open');
+        overlay.classList.add('active');
+        document.body.classList.add('menu-open');
+    }
+
+    // Toggle (Mobile)
+    if(menuToggle) {
+        menuToggle.onclick = () => {
+            if (sidebar.classList.contains('open')) closeMenu();
+            else openMenu();
+        };
+    }
+
+    // Zamknięcie po kliknięciu w overlay
+    if(overlay) overlay.onclick = closeMenu;
+
+    // Nawigacja: Dashboard (Scroll to top)
+    if(navDashboard) {
+        navDashboard.onclick = (e) => {
+            e.preventDefault();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            closeMenu();
+            // Aktualizacja aktywnego linku
+            navDashboard.classList.add('active');
+            if(navHistory) navHistory.classList.remove('active');
+        };
+    }
+
+    // Nawigacja: Pomiary (Scroll to history)
+    if(navHistory) {
+        navHistory.onclick = (e) => {
+            e.preventDefault();
+            const section = el('history-section');
+            if(section) {
+                section.scrollIntoView({ behavior: 'smooth' });
+                closeMenu();
+                // Aktualizacja aktywnego linku
+                navHistory.classList.add('active');
+                if(navDashboard) navDashboard.classList.remove('active');
+            }
+        };
+    }
+    
+    // Ustawienie domyślne active na Dashboard na start
+    if(navDashboard) navDashboard.classList.add('active');
+}
+
 window.onload = () => {
     const savedTheme = localStorage.getItem('ls_theme') || 'dark';
     document.body.setAttribute('data-theme', savedTheme);
-    // ZMIANA: Domyślnie 'en' w localStorage fallback
+    
     setLang(localStorage.getItem('ls_lang') || 'en');
     setCurrentUnit(localStorage.getItem('ls_unit') || 'mbps');
     updateThemeIcon(savedTheme);
@@ -139,28 +182,22 @@ window.onload = () => {
     initGauge();
     initCharts(); 
     initHistoryEvents();
+    initMenu(); // Inicjalizacja menu
 
     loadSettings().then(() => loadHistory());
     
-    // --- OBSŁUGA POWIADOMIENIA O ZALOGOWANIU ---
-    // Sprawdzamy czy URL zawiera ?login=success
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('login') === 'success') {
-        // Małe opóźnienie, aby interfejs zdążył się wyrenderować
         setTimeout(() => {
             log(translations[lang].msg_login_success);
         }, 500);
-        // Czyszczenie URL z parametrów (bez przeładowania strony)
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 
     el('start-btn').onclick = startTest;
 
-    // Przycisk wylogowania
     const logoutBtn = el('logout-btn');
-    if(logoutBtn) {
-        logoutBtn.onclick = handleLogout;
-    }
+    if(logoutBtn) logoutBtn.onclick = handleLogout;
 
     el('lang-toggle').onclick = () => { 
         const nextLang = lang === 'pl' ? 'en' : 'pl'; 
@@ -178,7 +215,7 @@ window.onload = () => {
         updateThemeIcon(next);
         
         reloadGauge(); 
-        initCharts(); // ZMIANA: Odśwież kolory wykresów przy zmianie motywu
+        initCharts(); 
         updateTexts(getGaugeInstance()); 
 
         saveSettings(lang, next, currentUnit);
