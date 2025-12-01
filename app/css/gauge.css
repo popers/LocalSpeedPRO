@@ -1,11 +1,12 @@
 /* ZEGAR I LICZNIK */
 .gauge-section {
     flex: 1 1 450px; 
-    padding: 1rem; 
+    /* Desktop: minimalny padding z góry */
+    padding: 10px 0 0 0; 
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     border-right: 1px solid var(--border);
     position: relative; 
     min-height: 400px; 
@@ -27,10 +28,12 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-top: -30px; 
+    margin-top: -50px; 
     margin-bottom: 1.5rem;
     min-width: 140px; 
     transition: all 0.3s ease;
+    z-index: 5; 
+    position: relative;
 }
 
 [data-theme="dark"] .digital-box {
@@ -60,6 +63,7 @@
     gap: 8px;
     z-index: 10;
     font-size: 1rem;
+    margin-bottom: 10px; 
 }
 
 /* PRZEŁĄCZNIK JEDNOSTEK */
@@ -88,9 +92,46 @@
     background: var(--primary);
     color: white;
     border-color: var(--primary);
-    /* ZMIANA: Dynamiczny cień RGB */
     box-shadow: 0 4px 10px rgba(var(--primary-rgb), 0.3);
     transform: translateY(-1px);
 }
 
 .unit-switch:active { transform: translateY(0); }
+
+/* --- STYLE DLA WERSJI MOBILNEJ --- */
+@media (max-width: 900px) {
+    .gauge-section {
+        /* Wymuszamy brak paddingu, żeby licznik dotykał krawędzi */
+        padding: 10px 0 0 0 !important;
+        min-height: 300px; 
+    }
+
+    .digital-box {
+        /* ZMIANA: Powiększenie boxa (było 4px 12px) */
+        padding: 6px 20px;
+        /* ZMIANA: Szerszy box (było 80px) */
+        min-width: 100px;
+        border-radius: 8px;
+        /* ZMIANA: Podnosimy box wyżej (było -15px, dajemy -40px), 
+           aby oddalić go od pingu i "wbić" lekko w tarczę */
+        margin-top: -40px; 
+        margin-bottom: 0.8rem;
+    }
+
+    .digital-box span#speed-value {
+        /* ZMIANA: Większa czcionka (było 1.1rem) */
+        font-size: 1.5rem; 
+    }
+
+    .ping-display {
+        padding: 6px 15px;
+        font-size: 0.9rem;
+    }
+
+    .unit-switch {
+        bottom: 10px;
+        right: 10px;
+        padding: 6px 12px;
+        font-size: 0.75rem;
+    }
+}

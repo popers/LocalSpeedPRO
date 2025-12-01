@@ -55,7 +55,9 @@
     .gauge-section {
         border-right: none;
         border-bottom: 1px solid var(--border);
-        padding: 1rem; 
+        /* ZMIANA: Usunięto padding: 1rem, który blokował powiększanie licznika.
+           Teraz padding jest kontrolowany wyłącznie przez gauge.css */
+        padding: 0; 
         min-height: auto;
         flex: 1; 
     }
