@@ -202,8 +202,11 @@
                                 <p class="desc-text" data-key="gdrive_desc">Automatycznie wysyłaj kopie zapasowe do folderu na Google Drive.</p>
 
                                 <div class="gdrive-status-line">
-                                    <span class="material-icons link-icon">link</span>
-                                    <span id="gdrive-status-text" data-key="status_disconnected">Status: Niepołączono</span>
+                                    <!-- USUNIĘTO data-key z rodzica, aby updateTexts nie nadpisywał całości -->
+                                    <span id="gdrive-status-text">
+                                        <span class="material-icons link-icon">link_off</span>
+                                        <span data-key="status_disconnected">Status: Niepołączono</span>
+                                    </span>
                                 </div>
 
                                 <div class="backup-info-grid">
@@ -277,7 +280,6 @@
                                 <details class="help-details">
                                     <summary data-key="help_gdrive_config">Jak skonfigurować Client ID/Secret?</summary>
                                     <ol>
-                                        <!-- Użycie data-key dla elementów listy -->
                                         <li data-key="gdrive_help_1">Wejdź na Google Cloud Console i utwórz nowy projekt.</li>
                                         <li data-key="gdrive_help_2">Włącz API "Google Drive API" w bibliotece.</li>
                                         <li data-key="gdrive_help_3">W "Credentials" utwórz "OAuth Client ID" (Typ: Web application).</li>
@@ -419,22 +421,16 @@
             } catch(e) { console.error("Failed to load settings:", e); }
         }
         
-        // --- ZAKTUALIZOWANA LOGIKA ODMIAY Z TŁUMACZENIAMI ---
         function formatDays(days) {
             const d = parseInt(days);
             if(isNaN(d)) return days;
-            
             const t = translations[lang];
             const every = t.txt_every || "co";
-            
             if (d === 1) {
                 const day = t.txt_day || "dzień";
-                // Np. "co 1 dzień" / "every 1 day"
                 return `${d} ${day}`; 
             }
-            
             const daysTxt = t.txt_days || "dni";
-            // Np. "co 7 dni" / "every 7 days"
             return `${d} ${daysTxt}`;
         }
 
@@ -447,15 +443,10 @@
                 
                 const nextInfoDiv = el('next-backup-info');
                 if(stat.connected && stat.next_backup_time) {
-                    // Używamy funkcji z tłumaczeniami
                     const daysStr = formatDays(stat.next_backup_freq);
-                    
                     const t = translations[lang];
                     const every = t.txt_every || "co"; 
-                    
-                    // Budujemy tekst: "04:00 (co 1 dzień)" / "04:00 (every 1 day)"
                     const formattedStr = `${stat.next_backup_time} (${every} ${daysStr})`;
-                    
                     el('next-backup-text').innerText = formattedStr;
                     nextInfoDiv.style.display = 'block';
                 } else {
@@ -464,35 +455,35 @@
                 
                 const statusText = el('gdrive-status-text');
                 const btnConnect = el('connect-gdrive-btn');
-                
                 const t = translations[lang];
 
+                // POPRAWKA: Dynamiczne budowanie HTML ze spanami i data-key, aby updateTexts nie psuło ikony
+                // oraz aby tekst był zgodny ze stanem 'stat.connected'.
+                
                 if(stat.connected) {
-                    // Pobieramy przetłumaczony status
-                    const connectedTxt = t.status_connected || "Status: Połączono";
                     statusText.style.color = "var(--primary)";
-                    statusText.innerHTML = `<span class="material-icons link-icon">link</span> ${connectedTxt}`;
+                    // Kluczowe: data-key jest na wewnętrznym spanie, nie na głównym kontenerze.
+                    statusText.innerHTML = `<span class="material-icons link-icon">link</span> <span data-key="status_connected">${t.status_connected || "Połączono"}</span>`;
                     
-                    // Zaktualizuj przycisk, jeśli trzeba (jest już data-key, więc updateTexts to ogarnie, 
-                    // ale tutaj dynamicznie zmieniamy akcję/ikonę)
-                    btnConnect.innerHTML = `<span class="material-icons">link_off</span> <span data-key="btn_disconnect_account">${t.btn_disconnect_account}</span>`;
                     btnConnect.setAttribute('data-action', 'disconnect');
                     btnConnect.classList.remove('btn-primary-fill');
                     btnConnect.classList.add('btn-danger-fill');
+                    btnConnect.innerHTML = `<span class="material-icons">link_off</span> <span data-key="btn_disconnect_account">${t.btn_disconnect_account || "ODŁĄCZ"}</span>`;
                     
                 } else {
-                    const disconnectedTxt = t.status_disconnected || "Status: Niepołączono";
                     statusText.style.color = "#ff5252";
-                    statusText.innerHTML = `<span class="material-icons link-icon">link_off</span> ${disconnectedTxt}`;
+                    statusText.innerHTML = `<span class="material-icons link-icon">link_off</span> <span data-key="status_disconnected">${t.status_disconnected || "Niepołączono"}</span>`;
                     
-                    btnConnect.innerHTML = `<span class="material-icons">link</span> <span data-key="btn_connect_account">${t.btn_connect_account}</span>`;
                     btnConnect.setAttribute('data-action', 'connect');
                     btnConnect.classList.remove('btn-danger-fill');
                     btnConnect.classList.add('btn-primary-fill');
+                    btnConnect.innerHTML = `<span class="material-icons">link</span> <span data-key="btn_connect_account">${t.btn_connect_account || "POŁĄCZ"}</span>`;
                 }
                 
-                // Na koniec upewniamy się, że wszystkie inne statyczne klucze są odświeżone
-                updateTexts(); 
+                // Uruchamiamy updateTexts, aby upewnić się, że język jest spójny, ale teraz
+                // updateTexts zaktualizuje tylko wnętrze <span data-key="...">, nie ruszając ikony.
+                // updateTexts(); // Można pominąć tutaj, bo wstrzyknęliśmy poprawne t.*, ale bezpieczniej zostawić w init.
+                
             } catch(e) {}
         }
 
@@ -640,7 +631,7 @@
                 setLang(n); 
                 updateTexts(); 
                 fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ lang: n }) })
-                .then(() => fetchBackupStatus()); // Odśwież statusy po zmianie języka
+                .then(() => fetchBackupStatus()); 
             };
             
             el('theme-toggle').onclick = () => { const n = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; document.body.setAttribute('data-theme', n); updateThemeIcon(n); fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ theme: n }) }); };

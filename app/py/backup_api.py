@@ -1,21 +1,16 @@
 import os
-import shutil
+import io
 import datetime
 import logging
-import json
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Request, Response
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import StreamingResponse, RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
-from .database import get_db, Settings, DB_PATH, BASE_DIR, engine
+from sqlalchemy import text
+from .database import get_db, Settings, SpeedResult
 
 # Biblioteki Google
 from google_auth_oauthlib.flow import Flow
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
-
-# Import wspólnej logiki
-from .backup_service import perform_backup_logic
+from .backup_service import perform_backup_logic, generate_sql_dump
 
 logger = logging.getLogger("BackupAPI")
 router = APIRouter()
@@ -25,45 +20,71 @@ SCOPES = ['https://www.googleapis.com/auth/drive.file']
 # --- LOKALNA KOPIA ZAPASOWA ---
 
 @router.get("/api/backup/download")
-async def download_backup():
-    """Pobiera plik bazy danych jako SQL/DB."""
-    if not os.path.exists(DB_PATH):
-        raise HTTPException(status_code=404, detail="Database file not found")
-    
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
-    filename = f"localspeed_backup_{timestamp}.sql"
-    
-    return FileResponse(
-        path=DB_PATH,
-        filename=filename,
-        media_type='application/octet-stream',
-        headers={
-            "Cache-Control": "no-store, no-cache, must-revalidate",
-            "Pragma": "no-cache"
-        }
-    )
+async def download_backup(db: Session = Depends(get_db)):
+    """
+    Pobiera backup danych. 
+    W wersji MariaDB generujemy plik SQL z instrukcjami INSERT.
+    """
+    try:
+        # Generujemy zawartość SQL w pamięci
+        sql_content = generate_sql_dump(db)
+        
+        # Tworzymy strumień pliku
+        stream = io.StringIO(sql_content)
+        
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+        filename = f"localspeed_backup_{timestamp}.sql"
+        
+        # StreamingResponse oczekuje generatora lub iteratora bajtów/stringów
+        return StreamingResponse(
+            iter([sql_content]),
+            media_type='application/sql',
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Cache-Control": "no-store"
+            }
+        )
+    except Exception as e:
+        logger.error(f"Błąd generowania backupu: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/backup/restore")
-async def restore_backup(file: UploadFile = File(...)):
-    """Nadpisuje bazę danych przesłanym plikiem."""
+async def restore_backup(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """
+    Przywraca dane z pliku SQL.
+    UWAGA: To jest prosta implementacja parsująca plik linia po linii.
+    """
     try:
-        temp_path = os.path.join(BASE_DIR, "restore_temp.db")
-        with open(temp_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        content = await file.read()
+        sql_script = content.decode('utf-8')
+        
+        # Rozbijamy na instrukcje po średniku
+        statements = sql_script.split(';')
+        
+        try:
+            # Czyścimy obecne tabele przed importem
+            db.execute(text("DELETE FROM results"))
+            # Nie usuwamy settings całkowicie, żeby nie stracić konfiguracji DB, 
+            # ale w tym przypadku nadpiszemy je danymi z backupu jeśli tam są.
+            # Dla bezpieczeństwa:
+            db.execute(text("DELETE FROM settings"))
             
-        with open(temp_path, "rb") as f:
-            header = f.read(16)
-            if b"SQLite format 3" not in header:
-                os.remove(temp_path)
-                raise HTTPException(status_code=400, detail="Invalid database file format")
-
-        engine.dispose()
-        shutil.move(temp_path, DB_PATH)
-        engine.dispose()
-        
-        logger.info("Baza danych została przywrócona i połączenia zrestartowane.")
-        return {"status": "success", "message": "Database restored successfully"}
-        
+            count = 0
+            for stmt in statements:
+                stmt = stmt.strip()
+                if stmt:
+                    # Wykonujemy INSERTY
+                    db.execute(text(stmt))
+                    count += 1
+            
+            db.commit()
+            logger.info(f"Przywrócono bazę danych ({count} instrukcji).")
+            return {"status": "success", "message": f"Database restored ({count} instructions)"}
+            
+        except Exception as db_err:
+            db.rollback()
+            raise db_err
+            
     except Exception as e:
         logger.error(f"Błąd przywracania bazy: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -73,7 +94,6 @@ async def restore_backup(file: UploadFile = File(...)):
 
 @router.get("/api/backup/google/auth")
 async def google_auth_start(request: Request, db: Session = Depends(get_db)):
-    """1. Rozpoczyna proces logowania do Google Drive."""
     settings = db.query(Settings).filter(Settings.id == 1).first()
     
     if not settings.gdrive_client_id or not settings.gdrive_client_secret:
@@ -90,6 +110,7 @@ async def google_auth_start(request: Request, db: Session = Depends(get_db)):
 
     base_url = str(request.base_url).rstrip('/')
     redirect_uri = f"{base_url}/api/backup/google/callback"
+    # Fix dla reverse proxy
     if request.headers.get("x-forwarded-proto") == "https":
         redirect_uri = redirect_uri.replace("http://", "https://")
 
@@ -116,7 +137,6 @@ async def google_auth_start(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/api/backup/google/callback")
 async def google_auth_callback(request: Request, code: str = None, error: str = None, state: str = None, db: Session = Depends(get_db)):
-    """2. Odbiera kod z Google i wymienia na tokeny."""
     if error:
         return RedirectResponse(f"/settings.html?error=gdrive_denied&msg={error}")
     
@@ -161,7 +181,6 @@ async def google_auth_callback(request: Request, code: str = None, error: str = 
 
 @router.post("/api/backup/google/disconnect")
 async def google_disconnect(db: Session = Depends(get_db)):
-    """Rozłącza konto Google."""
     settings = db.query(Settings).filter(Settings.id == 1).first()
     if settings:
         settings.gdrive_token_json = None
@@ -175,9 +194,7 @@ async def google_disconnect(db: Session = Depends(get_db)):
 
 @router.post("/api/backup/google/test")
 async def test_google_backup(db: Session = Depends(get_db)):
-    """Ręczne wywołanie backupu (Button: Wyślij teraz)."""
     try:
-        # Używamy nowej funkcji z backup_service
         result = perform_backup_logic(db)
         if result['status'] == 'skipped':
              return JSONResponse(status_code=400, content={"status": "error", "message": result['message']})
@@ -189,8 +206,6 @@ async def test_google_backup(db: Session = Depends(get_db)):
 
 @router.get("/api/backup/status")
 async def get_backup_status(response: Response, db: Session = Depends(get_db)):
-    """Zwraca status ostatniego backupu."""
-    
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"

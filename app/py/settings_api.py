@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter, Request, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
-from sqlalchemy import text 
+from sqlalchemy import text, inspect
 from .database import get_db, Settings, engine
 
 logger = logging.getLogger("SettingsAPI")
@@ -9,42 +9,54 @@ router = APIRouter()
 
 def ensure_columns():
     """
-    Sprawdza i dodaje brakujące kolumny (surowe połączenie).
+    Sprawdza i dodaje brakujące kolumny.
+    Zaktualizowane, aby działać zarówno na SQLite (PRAGMA) jak i MySQL (inspect).
     """
     try:
-        with engine.connect() as connection:
-            columns_info = connection.execute(text("PRAGMA table_info(settings)")).fetchall()
-            existing_columns = [col[1] for col in columns_info]
-            
-            def add_if_missing(col_name, col_type, default):
-                if col_name not in existing_columns:
-                    logger.info(f"Migracja: Dodawanie kolumny '{col_name}'...")
-                    try:
+        # Używamy SQLAlchemy Inspector, który jest niezależny od bazy danych
+        inspector = inspect(engine)
+        
+        # Jeśli tabela jeszcze nie istnieje (np. przy pierwszym starcie przed create_all), pomijamy
+        if not inspector.has_table("settings"):
+            return
+
+        columns_info = inspector.get_columns("settings")
+        existing_columns = [col['name'] for col in columns_info]
+        
+        # Helper do wykonywania ALTER TABLE
+        def add_if_missing(col_name, col_type, default):
+            if col_name not in existing_columns:
+                logger.info(f"Migracja: Dodawanie kolumny '{col_name}'...")
+                try:
+                    with engine.connect() as connection:
+                        # Składnia ADD COLUMN jest wspierana przez MySQL i SQLite
+                        # W MySQL ważne jest podanie długości dla VARCHAR (np. VARCHAR(255))
                         connection.execute(text(f"ALTER TABLE settings ADD COLUMN {col_name} {col_type} DEFAULT {default}"))
                         connection.commit()
-                    except Exception as ex:
-                        logger.error(f"Błąd dodawania kolumny {col_name}: {ex}")
+                except Exception as ex:
+                    logger.error(f"Błąd dodawania kolumny {col_name}: {ex}")
 
-            add_if_missing("unit", "VARCHAR", "'mbps'")
-            add_if_missing("primary_color", "VARCHAR", "'#6200ea'")
-            add_if_missing("oidc_enabled", "BOOLEAN", "0")
-            add_if_missing("oidc_discovery_url", "VARCHAR", "''")
-            add_if_missing("oidc_client_id", "VARCHAR", "''")
-            add_if_missing("oidc_client_secret", "VARCHAR", "''")
-            
-            # --- Nowe kolumny Google Drive ---
-            add_if_missing("gdrive_enabled", "BOOLEAN", "0")
-            add_if_missing("gdrive_client_id", "VARCHAR", "''")
-            add_if_missing("gdrive_client_secret", "VARCHAR", "''")
-            add_if_missing("gdrive_folder_name", "VARCHAR", "'LocalSpeed_Backup'")
-            add_if_missing("gdrive_backup_frequency", "INTEGER", "1")
-            add_if_missing("gdrive_backup_time", "VARCHAR", "'04:00'")
-            add_if_missing("gdrive_retention_days", "INTEGER", "7")
-            add_if_missing("gdrive_last_backup", "VARCHAR", "''")
-            add_if_missing("gdrive_status", "VARCHAR", "''")
-            add_if_missing("gdrive_token_json", "VARCHAR", "''")
+        # Definicje kolumn z typami kompatybilnymi dla MySQL (długość VARCHAR)
+        add_if_missing("unit", "VARCHAR(10)", "'mbps'")
+        add_if_missing("primary_color", "VARCHAR(20)", "'#6200ea'")
+        add_if_missing("oidc_enabled", "BOOLEAN", "0")
+        add_if_missing("oidc_discovery_url", "VARCHAR(255)", "''")
+        add_if_missing("oidc_client_id", "VARCHAR(255)", "''")
+        add_if_missing("oidc_client_secret", "VARCHAR(255)", "''")
+        
+        # --- Nowe kolumny Google Drive ---
+        add_if_missing("gdrive_enabled", "BOOLEAN", "0")
+        add_if_missing("gdrive_client_id", "VARCHAR(255)", "''")
+        add_if_missing("gdrive_client_secret", "VARCHAR(255)", "''")
+        add_if_missing("gdrive_folder_name", "VARCHAR(255)", "'LocalSpeed_Backup'")
+        add_if_missing("gdrive_backup_frequency", "INTEGER", "1")
+        add_if_missing("gdrive_backup_time", "VARCHAR(10)", "'04:00'")
+        add_if_missing("gdrive_retention_days", "INTEGER", "7")
+        add_if_missing("gdrive_last_backup", "VARCHAR(50)", "''")
+        add_if_missing("gdrive_status", "VARCHAR(255)", "''")
+        # Zwiększamy limit dla tokena (TEXT byłby lepszy w MySQL, ale VARCHAR(4000) jest bezpieczny i prosty)
+        add_if_missing("gdrive_token_json", "VARCHAR(4000)", "''")
 
-            
     except Exception as e:
         logger.error(f"Krytyczny błąd migracji (engine): {e}")
 
@@ -89,6 +101,7 @@ def get_settings(response: Response, db: Session = Depends(get_db)):
 
     except Exception as e:
         logger.error(f"Błąd pobierania ustawień: {e}")
+        # Fallback w przypadku błędu
         return { "id": 1, "lang": "en", "theme": "dark" }
 
 @router.post("/api/settings")

@@ -5,12 +5,41 @@ services:
     ports:
       - 8002:80
     restart: unless-stopped
+    depends_on:
+      - db
     environment:
       - WEB_CONCURRENCY=8
       - TZ=Europe/Warsaw
-      # Domyślne dane logowania (zmienne pobierane z .env)
       - APP_USER=${APP_USER:-admin}
       - APP_PASSWORD=${APP_PASSWORD:-admin}
+      # Konfiguracja bazy danych
+      - DB_TYPE=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
     volumes:
       - ./app:/app
-networks: {}
+  
+  db:
+    image: mariadb:10.11
+    container_name: localspeed_db
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - TZ=Europe/Warsaw
+    volumes:
+      # Tutaj będą przechowywane dane bazy (trwałe)
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  mariadb_data:
