@@ -7,7 +7,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     
-    <!-- Favicon FIX: Zmiana na format ICO (preferowany przez wiele systemów i urządzeń mobilnych) -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="apple-touch-icon" href="/favicon.ico">
 
@@ -29,7 +28,6 @@
                 }
                 return null;
             }
-            // --- JĘZYK I MOTYW (FIX BŁYSKU PL -> EN) ---
             const savedTheme = localStorage.getItem('ls_theme') || 'dark';
             document.documentElement.setAttribute('data-theme', savedTheme);
             const savedColor = localStorage.getItem('ls_primary_color');
@@ -38,8 +36,7 @@
                 const rgb = hexToRgb(savedColor);
                 if(rgb) document.documentElement.style.setProperty('--primary-rgb', rgb);
             }
-            // KRUCJALNA ZMIANA (FIX FOUC): Ustawiamy atrybut lang elementu <html> PRZED renderowaniem ciała strony.
-            const savedLang = localStorage.getItem('ls_lang') || 'en'; // Domyślnie na EN
+            const savedLang = localStorage.getItem('ls_lang') || 'en';
             document.documentElement.setAttribute('lang', savedLang);
         })();
     </script>
@@ -70,7 +67,6 @@
 
     <div class="app-layout">
         
-        <!-- FIX FOUC: Domyślnie ukrywamy sidebar za pomocą klasy "untranslated" -->
         <aside class="sidebar untranslated" id="app-sidebar">
             <div class="sidebar-mobile-header">
                 <span class="material-icons">speed</span>
@@ -148,7 +144,6 @@
                             </div>
 
                             <div style="margin-top: 1rem; text-align: right;">
-                                <!-- NAPRAWIONO STYL PRZYCISKU ZAPISZ -->
                                 <button id="save-oidc-btn" class="btn-action-fill btn-primary-fill">
                                     <span class="material-icons">save</span> <span data-key="btn_save">Zapisz</span>
                                 </button>
@@ -208,12 +203,18 @@
 
                                 <div class="gdrive-status-line">
                                     <span class="material-icons link-icon">link</span>
-                                    <span id="gdrive-status-text">Status: Niepołączono</span>
+                                    <span id="gdrive-status-text" data-key="status_disconnected">Status: Niepołączono</span>
                                 </div>
 
                                 <div class="backup-info-grid">
-                                    <div><small>Ostatni backup:</small> <span id="last-backup-date">--</span> | <span id="last-backup-status">--</span></div>
-                                    <div id="next-backup-info" style="display:none;"><small>Następny backup:</small> <span id="next-backup-text">--</span></div>
+                                    <div>
+                                        <small data-key="lbl_last_backup">Ostatni backup:</small> 
+                                        <span id="last-backup-date">--</span> | <span id="last-backup-status">--</span>
+                                    </div>
+                                    <div id="next-backup-info" style="display:none;">
+                                        <small data-key="lbl_next_backup">Następny backup:</small> 
+                                        <span id="next-backup-text">--</span>
+                                    </div>
                                 </div>
 
                                 <div class="form-group-grid">
@@ -276,10 +277,11 @@
                                 <details class="help-details">
                                     <summary data-key="help_gdrive_config">Jak skonfigurować Client ID/Secret?</summary>
                                     <ol>
-                                        <li>Wejdź na Google Cloud Console i utwórz nowy projekt.</li>
-                                        <li>Włącz API "Google Drive API" w bibliotece.</li>
-                                        <li>W "Credentials" utwórz "OAuth Client ID" (Typ: Web application).</li>
-                                        <li>Skopiuj <strong>Redirect URI</strong> z pola powyżej i wklej w konsoli Google.</li>
+                                        <!-- Użycie data-key dla elementów listy -->
+                                        <li data-key="gdrive_help_1">Wejdź na Google Cloud Console i utwórz nowy projekt.</li>
+                                        <li data-key="gdrive_help_2">Włącz API "Google Drive API" w bibliotece.</li>
+                                        <li data-key="gdrive_help_3">W "Credentials" utwórz "OAuth Client ID" (Typ: Web application).</li>
+                                        <li data-key="gdrive_help_4">Skopiuj <strong>Redirect URI</strong> z pola powyżej i wklej w konsoli Google.</li>
                                     </ol>
                                 </details>
 
@@ -288,11 +290,11 @@
                         </div>
                     </div>
 
-                    <!-- 3. Kafelka: Wygląd (PRZESUNIĘTA NA DÓŁ) -->
+                    <!-- 3. Kafelka: Wygląd -->
                     <div class="setting-card">
                         <div class="card-header">
                             <span class="material-icons">palette</span>
-                            <span data-key="settings_appearance">Wygląd</span>
+                            <span data-key="settings_appearance">Personalizacja</span>
                         </div>
                         <div class="card-body">
                             
@@ -322,7 +324,6 @@
 
     <div id="toast-container"></div>
     
-    <!-- CSS (Same as before) -->
     <style>
         .gdrive-actions-row {
             display: flex;
@@ -418,16 +419,23 @@
             } catch(e) { console.error("Failed to load settings:", e); }
         }
         
-        // --- POPRAWIONA LOGIKA ODMIAY ---
+        // --- ZAKTUALIZOWANA LOGIKA ODMIAY Z TŁUMACZENIAMI ---
         function formatDays(days) {
             const d = parseInt(days);
             if(isNaN(d)) return days;
-            if(lang === 'pl') {
-                if(d === 1) return "1 dzień";
-                // Prosta odmiana dla dni > 1 (w UI wystarczy "dni")
-                return d + " dni"; 
+            
+            const t = translations[lang];
+            const every = t.txt_every || "co";
+            
+            if (d === 1) {
+                const day = t.txt_day || "dzień";
+                // Np. "co 1 dzień" / "every 1 day"
+                return `${d} ${day}`; 
             }
-            return d + (d === 1 ? " day" : " days");
+            
+            const daysTxt = t.txt_days || "dni";
+            // Np. "co 7 dni" / "every 7 days"
+            return `${d} ${daysTxt}`;
         }
 
         async function fetchBackupStatus() {
@@ -439,8 +447,15 @@
                 
                 const nextInfoDiv = el('next-backup-info');
                 if(stat.connected && stat.next_backup_time) {
+                    // Używamy funkcji z tłumaczeniami
                     const daysStr = formatDays(stat.next_backup_freq);
-                    const formattedStr = `${stat.next_backup_time} (co ${daysStr})`;
+                    
+                    const t = translations[lang];
+                    const every = t.txt_every || "co"; 
+                    
+                    // Budujemy tekst: "04:00 (co 1 dzień)" / "04:00 (every 1 day)"
+                    const formattedStr = `${stat.next_backup_time} (${every} ${daysStr})`;
+                    
                     el('next-backup-text').innerText = formattedStr;
                     nextInfoDiv.style.display = 'block';
                 } else {
@@ -449,27 +464,34 @@
                 
                 const statusText = el('gdrive-status-text');
                 const btnConnect = el('connect-gdrive-btn');
+                
+                const t = translations[lang];
 
                 if(stat.connected) {
-                    statusText.innerText = "Status: Połączono";
+                    // Pobieramy przetłumaczony status
+                    const connectedTxt = t.status_connected || "Status: Połączono";
                     statusText.style.color = "var(--primary)";
-                    statusText.innerHTML = `<span class="material-icons link-icon">link</span> Status: Połączono`;
+                    statusText.innerHTML = `<span class="material-icons link-icon">link</span> ${connectedTxt}`;
                     
-                    btnConnect.innerHTML = `<span class="material-icons">link_off</span> <span data-key="btn_disconnect_account">Odłącz konto</span>`;
+                    // Zaktualizuj przycisk, jeśli trzeba (jest już data-key, więc updateTexts to ogarnie, 
+                    // ale tutaj dynamicznie zmieniamy akcję/ikonę)
+                    btnConnect.innerHTML = `<span class="material-icons">link_off</span> <span data-key="btn_disconnect_account">${t.btn_disconnect_account}</span>`;
                     btnConnect.setAttribute('data-action', 'disconnect');
                     btnConnect.classList.remove('btn-primary-fill');
                     btnConnect.classList.add('btn-danger-fill');
                     
                 } else {
-                    statusText.innerText = "Status: Niepołączono";
+                    const disconnectedTxt = t.status_disconnected || "Status: Niepołączono";
                     statusText.style.color = "#ff5252";
-                    statusText.innerHTML = `<span class="material-icons link-icon">link_off</span> Status: Niepołączono`;
+                    statusText.innerHTML = `<span class="material-icons link-icon">link_off</span> ${disconnectedTxt}`;
                     
-                    btnConnect.innerHTML = `<span class="material-icons">link</span> <span data-key="btn_connect_account">POŁĄCZ KONTO</span>`;
+                    btnConnect.innerHTML = `<span class="material-icons">link</span> <span data-key="btn_connect_account">${t.btn_connect_account}</span>`;
                     btnConnect.setAttribute('data-action', 'connect');
                     btnConnect.classList.remove('btn-danger-fill');
                     btnConnect.classList.add('btn-primary-fill');
                 }
+                
+                // Na koniec upewniamy się, że wszystkie inne statyczne klucze są odświeżone
                 updateTexts(); 
             } catch(e) {}
         }
@@ -504,7 +526,6 @@
                 const res = await fetch('/api/backup/restore', { method: 'POST', body: formData });
                 if(res.ok) {
                     log("Przywrócono bazę danych. Odśwież stronę.");
-                    // TWARDE ODŚWIEŻENIE PO 1.5S
                     setTimeout(() => window.location.reload(true), 1500);
                 } else {
                     throw new Error("Błąd przywracania");
@@ -512,7 +533,7 @@
             } catch(e) {
                 log(translations[lang].err + "Restore failed");
                 restoreBtn.disabled = false;
-                restoreBtn.innerHTML = `<span class="material-icons">history</span> PRZYWRÓĆ Z PLIKU`;
+                restoreBtn.innerHTML = `<span class="material-icons">history</span> ${translations[lang].btn_restore_file}`;
             }
         };
 
@@ -614,7 +635,14 @@
                 el('trigger-backup-btn').disabled = false;
             };
 
-            el('lang-toggle').onclick = () => { const n = lang === 'pl' ? 'en' : 'pl'; setLang(n); updateTexts(); fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ lang: n }) }); };
+            el('lang-toggle').onclick = () => { 
+                const n = lang === 'pl' ? 'en' : 'pl'; 
+                setLang(n); 
+                updateTexts(); 
+                fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ lang: n }) })
+                .then(() => fetchBackupStatus()); // Odśwież statusy po zmianie języka
+            };
+            
             el('theme-toggle').onclick = () => { const n = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; document.body.setAttribute('data-theme', n); updateThemeIcon(n); fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ theme: n }) }); };
             if(el('reset-color-btn')) el('reset-color-btn').onclick = () => { applyPrimaryColor(null); setPrimaryColor(null); localStorage.removeItem('ls_primary_color'); picker.value = '#6200ea'; el('color-hex').value='#6200ea'; fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ primary_color: null }) }); };
         };

@@ -43,7 +43,7 @@ export const translations = {
 
         // --- SETTINGS PAGE ---
         settings_title: "Ustawienia",
-        settings_appearance: "Wygląd",
+        settings_appearance: "Personalizacja", // ZMIANA
         settings_oidc_title: "Logowanie OIDC (SSO)",
         settings_oidc_desc: "Skonfiguruj logowanie przez OpenID Connect (np. Authentik, Keycloak, Google).",
         settings_backup_title: "Kopia Zapasowa",
@@ -53,7 +53,7 @@ export const translations = {
         lbl_oidc_discovery: "Discovery URL (.well-known):",
         lbl_oidc_client_id: "Client ID:",
         lbl_oidc_secret: "Client Secret:",
-        lbl_redirect: "Redirect URI (Callback) do wpisania u dostawcy:", // ZMIANA NA GENERYCZNĄ
+        lbl_redirect: "Redirect URI (Callback) do wpisania u dostawcy:",
         btn_reset_color: "Przywróć domyślny",
 
         // Backup translations
@@ -71,11 +71,24 @@ export const translations = {
         lbl_retention: "Retencja plików (dni):",
         lbl_freq: "Częstotliwość (co ile dni):",
         lbl_time: "Godzina backupu:",
-        btn_save: "Zapisz", // NOWE
+        btn_save: "Zapisz",
         btn_connect_account: "POŁĄCZ KONTO",
         btn_disconnect_account: "ODŁĄCZ KONTO",
         btn_backup_now: "WYŚLIJ TERAZ",
         help_gdrive_config: "Jak skonfigurować Client ID/Secret?",
+        
+        // NOWE TŁUMACZENIA GDRIVE
+        lbl_last_backup: "Ostatni backup:",
+        lbl_next_backup: "Następny backup:",
+        status_connected: "Status: Połączono",
+        status_disconnected: "Status: Niepołączono",
+        gdrive_help_1: "Wejdź na Google Cloud Console i utwórz nowy projekt.",
+        gdrive_help_2: "Włącz API \"Google Drive API\" w bibliotece.",
+        gdrive_help_3: "W \"Credentials\" utwórz \"OAuth Client ID\" (Typ: Web application).",
+        gdrive_help_4: "Skopiuj Redirect URI z pola powyżej i wklej w konsoli Google.",
+        txt_every: "co",
+        txt_days: "dni",
+        txt_day: "dzień",
 
         // --- LOGIN PAGE ---
         login_header: "LocalSpeed PRO",
@@ -129,7 +142,7 @@ export const translations = {
 
         // --- SETTINGS PAGE ---
         settings_title: "Settings",
-        settings_appearance: "Appearance",
+        settings_appearance: "Personalization", // ZMIANA
         settings_oidc_title: "OIDC Login (SSO)",
         settings_oidc_desc: "Configure OpenID Connect login (e.g. Authentik, Keycloak, Google).",
         settings_backup_title: "Backup",
@@ -162,6 +175,19 @@ export const translations = {
         btn_disconnect_account: "DISCONNECT ACCOUNT",
         btn_backup_now: "BACKUP NOW",
         help_gdrive_config: "How to configure Client ID/Secret?",
+        
+        // NEW GDRIVE TRANSLATIONS
+        lbl_last_backup: "Last backup:",
+        lbl_next_backup: "Next backup:",
+        status_connected: "Status: Connected",
+        status_disconnected: "Status: Disconnected",
+        gdrive_help_1: "Go to Google Cloud Console and create a new project.",
+        gdrive_help_2: "Enable 'Google Drive API' in the library.",
+        gdrive_help_3: "In 'Credentials', create an 'OAuth Client ID' (Type: Web application).",
+        gdrive_help_4: "Copy the Redirect URI from above and paste it into the Google Console.",
+        txt_every: "every",
+        txt_days: "days",
+        txt_day: "day",
 
         // --- LOGIN PAGE ---
         login_header: "LocalSpeed PRO",

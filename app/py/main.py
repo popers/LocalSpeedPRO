@@ -12,7 +12,10 @@ from .settings_api import router as settings_router
 from .history_api import router as history_router
 from .speedtest_api import router as speedtest_router
 from .auth import router as auth_router, COOKIE_NAME
-from .backup_api import router as backup_router # NOWY ROUTER
+from .backup_api import router as backup_router
+
+# Import Schedulera
+from .scheduler import start_scheduler, stop_scheduler
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("LocalSpeed")
@@ -45,6 +48,17 @@ initialize_static_files()
 
 app = FastAPI(title="LocalSpeed Pro")
 
+# --- EVENTY APLIKACJI (STARTUP/SHUTDOWN) ---
+@app.on_event("startup")
+async def startup_event():
+    """Uruchomienie schedulera przy starcie aplikacji."""
+    start_scheduler()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Zatrzymanie schedulera przy wyłączeniu."""
+    stop_scheduler()
+
 # --- WAŻNE: SessionMiddleware Fix ---
 SECRET_KEY = os.getenv("APP_SECRET", "dev_secret_key_fixed_12345")
 
@@ -74,7 +88,6 @@ async def auth_middleware(request: Request, call_next):
         "/api/auth/status",
         "/css", 
         "/js", 
-        # ZMIANA: Zezwalamy na dostęp tylko do /favicon.ico (usunęto /favicon.svg)
         "/favicon.ico"
     ]
     path = request.url.path
@@ -99,7 +112,7 @@ app.include_router(settings_router)
 app.include_router(history_router)
 app.include_router(speedtest_router)
 app.include_router(auth_router)
-app.include_router(backup_router) # Rejestracja
+app.include_router(backup_router)
 
 app.mount("/js", StaticFiles(directory=JS_DIR), name="js")
 app.mount("/css", StaticFiles(directory=CSS_DIR), name="css")
@@ -116,8 +129,6 @@ async def read_settings():
 async def read_login():
     return FileResponse(os.path.join(BASE_DIR, 'login.html'))
 
-# Endpoint dla favicony (teraz serwuje .ico)
 @app.get("/favicon.ico")
 async def favicon_ico():
-    # Zmieniono ścieżkę z 'favicon.svg' na 'favicon.ico'
     return FileResponse(os.path.join(BASE_DIR, 'favicon.ico'), media_type='image/x-icon')

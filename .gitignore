@@ -3,6 +3,7 @@
 data/
 *.csv
 *.log
+.dockerignore
 
 # Sekrety i konfiguracja lokalna
 .env
