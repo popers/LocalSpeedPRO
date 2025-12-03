@@ -1,11 +1,12 @@
 # Moduł odpowiedzialny za konfigurację bazy danych i modele SQLAlchemy
 
 import os
+import time
 import logging
-from sqlalchemy import create_engine, Column, Integer, Float, String, Boolean
+from sqlalchemy import create_engine, Column, Integer, Float, String, Boolean, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import OperationalError # Import do obsługi błędów bazy
+from sqlalchemy.exc import OperationalError
 
 logger = logging.getLogger("LocalSpeedDB")
 
@@ -13,37 +14,33 @@ logger = logging.getLogger("LocalSpeedDB")
 BASE_DIR = "/app"
 DB_SQLITE_NAME = "speedtest_final.db"
 DB_SQLITE_PATH = os.path.join(BASE_DIR, DB_SQLITE_NAME)
+STATIC_DIR = os.path.join(BASE_DIR, "static")
 
 # --- KONFIGURACJA POŁĄCZENIA ---
-DB_TYPE = os.getenv("DB_TYPE", "sqlite") # domyślnie sqlite, jeśli nie ustawiono mysql
+DB_TYPE = os.getenv("DB_TYPE", "sqlite")
 
 if DB_TYPE == "mysql":
-    # Pobieramy zmienne środowiskowe zdefiniowane w compose.yaml / .env
     user = os.getenv("DB_USER", "ls_user")
     password = os.getenv("DB_PASSWORD", "secret")
     host = os.getenv("DB_HOST", "db")
     port = os.getenv("DB_PORT", "3306")
     db_name = os.getenv("DB_NAME", "localspeed")
     
-    # Connection string dla MySQL (MariaDB) przy użyciu pymysql
     SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{user}:{password}@{host}:{port}/{db_name}"
     
-    # MySQL wymaga parametru pool_recycle, aby zrywać nieaktywne połączenia przed timeoutem serwera
     engine_args = {
         "pool_recycle": 3600,
         "pool_pre_ping": True
     }
-    logger.info(f"Używanie bazy danych MariaDB/MySQL: {host}")
+    logger.info(f"Konfiguracja: MariaDB/MySQL ({host})")
 
 else:
-    # Fallback do SQLite
     SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_SQLITE_PATH}"
-    # SQLite wymaga check_same_thread=False w FastAPI
     engine_args = {"connect_args": {"check_same_thread": False}}
-    logger.info(f"Używanie bazy danych SQLite: {DB_SQLITE_PATH}")
+    logger.info(f"Konfiguracja: SQLite ({DB_SQLITE_PATH})")
 
 
-# --- INICJALIZACJA BAZY DANYCH ---
+# --- TWORZENIE SILNIKA (ENGINE) ---
 try:
     engine = create_engine(SQLALCHEMY_DATABASE_URL, **engine_args)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -56,7 +53,7 @@ except Exception as e:
 class SpeedResult(Base):
     __tablename__ = "results"
     id = Column(Integer, primary_key=True, index=True)
-    date = Column(String(50)) # W MySQL warto określić długość stringa
+    date = Column(String(50))
     ping = Column(Float)
     download = Column(Float)
     upload = Column(Float)
@@ -71,48 +68,72 @@ class Settings(Base):
     unit = Column(String(10), default="mbps")
     primary_color = Column(String(20), default="#6200ea")
     
-    # --- Konfiguracja OIDC ---
+    # OIDC
     oidc_enabled = Column(Boolean, default=False)
     oidc_discovery_url = Column(String(255), default="")
     oidc_client_id = Column(String(255), default="")
     oidc_client_secret = Column(String(255), default="")
 
-    # --- Konfiguracja Google Drive Backup ---
+    # Google Drive Backup
     gdrive_enabled = Column(Boolean, default=False)
     gdrive_client_id = Column(String(255), default="")
     gdrive_client_secret = Column(String(255), default="")
     gdrive_folder_name = Column(String(255), default="LocalSpeed_Backup")
-    gdrive_backup_frequency = Column(Integer, default=1) # co ile dni
+    gdrive_backup_frequency = Column(Integer, default=1)
     gdrive_backup_time = Column(String(10), default="04:00")
     gdrive_retention_days = Column(Integer, default=7)
-    gdrive_last_backup = Column(String(50), default="") # data ostatniego backupu
-    gdrive_status = Column(String(255), default="") # np. "Success", "Error: ..."
-    # Tokeny przechowujemy jako JSON string (TEXT w mysql byłby lepszy, ale String wystarczy na start)
-    gdrive_token_json = Column(String(4000), default="") # Zwiększony limit dla tokena Google
+    gdrive_last_backup = Column(String(50), default="")
+    gdrive_status = Column(String(255), default="")
+    gdrive_token_json = Column(String(4000), default="")
 
-# Tworzenie tabel
-try:
-    Base.metadata.create_all(bind=engine)
-    logger.info("Tabele bazy danych zostały zweryfikowane/utworzone.")
-except OperationalError as e:
-    # FIX: Obsługa błędu 1050 (Table already exists)
-    # Występuje, gdy wiele workerów (WEB_CONCURRENCY=8) próbuje utworzyć tabele jednocześnie.
-    # Jeśli kod błędu to 1050, ignorujemy go.
-    if e.orig and e.orig.args[0] == 1050:
-        logger.warning("Tabele już istnieją (ignorowanie wyścigu przy starcie wielu workerów).")
-    else:
-        # Inne błędy operacyjne logujemy jako błąd
-        logger.error(f"KRYTYCZNY BŁĄD BAZY (OperationalError): {e}")
-except Exception as e:
-    logger.error(f"KRYTYCZNY BŁĄD BAZY: {e}")
+# --- FUNKCJA OCZEKUJĄCA NA BAZĘ (WAIT-FOR-DB) ---
+def wait_for_db_connection(max_retries=15, wait_seconds=2):
+    """
+    Próbuje nawiązać połączenie z bazą danych w pętli.
+    Blokuje start aplikacji do momentu sukcesu lub wyczerpania prób.
+    """
+    if DB_TYPE != "mysql":
+        return True
 
-# Zależność (Dependency) do pobierania sesji DB
+    logger.info("Oczekiwanie na połączenie z bazą danych...")
+    for i in range(max_retries):
+        try:
+            # Próba prostego połączenia
+            with engine.connect() as connection:
+                connection.execute(text("SELECT 1"))
+            logger.info("Połączenie z bazą danych nawiązane!")
+            return True
+        except OperationalError as e:
+            logger.warning(f"Baza danych niedostępna (próba {i+1}/{max_retries}). Czekam {wait_seconds}s...")
+            time.sleep(wait_seconds)
+        except Exception as e:
+            logger.error(f"Nieoczekiwany błąd połączenia: {e}")
+            time.sleep(wait_seconds)
+    
+    logger.error("Nie udało się połączyć z bazą danych po wielu próbach.")
+    return False
+
+# --- INICJALIZACJA TABEL ---
+# Najpierw czekamy na bazę, potem tworzymy tabele
+if wait_for_db_connection():
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Tabele bazy danych są gotowe.")
+    except OperationalError as e:
+        # Ignorujemy błąd wyścigu "Table already exists" przy wielu workerach
+        if e.orig and e.orig.args[0] == 1050:
+            logger.warning("Tabele już istnieją (ignorowanie wyścigu).")
+        else:
+            logger.error(f"KRYTYCZNY BŁĄD TWORZENIA TABEL: {e}")
+    except Exception as e:
+        logger.error(f"KRYTYCZNY BŁĄD BAZY: {e}")
+else:
+    logger.critical("APLIKACJA MOŻE NIE DZIAŁAĆ POPRAWNIE - BRAK POŁĄCZENIA Z BAZĄ")
+
+
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
-
-# Używane w main.py do inicjalizacji
-STATIC_DIR = os.path.join(BASE_DIR, "static")

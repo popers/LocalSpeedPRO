@@ -39,8 +39,10 @@ async function startTest() {
     btn.classList.add('loading'); 
 
     el('speed-value').innerText = "0.00";
-    reloadGauge(); 
-    resetCharts();
+    
+    // Zabezpieczenie: Próba przeładowania zegara i wykresów
+    try { reloadGauge(); } catch(e) { console.warn("Gauge error:", e); }
+    try { resetCharts(); } catch(e) { console.warn("Charts error:", e); }
 
     const gaugeInstance = getGaugeInstance();
 
@@ -119,20 +121,20 @@ function initMenu() {
     const navHistory = el('nav-history');
 
     function closeMenu() {
-        sidebar.classList.remove('open');
-        overlay.classList.remove('active');
+        if(sidebar) sidebar.classList.remove('open');
+        if(overlay) overlay.classList.remove('active');
         document.body.classList.remove('menu-open');
     }
 
     function openMenu() {
-        sidebar.classList.add('open');
-        overlay.classList.add('active');
+        if(sidebar) sidebar.classList.add('open');
+        if(overlay) overlay.classList.add('active');
         document.body.classList.add('menu-open');
     }
 
     if(menuToggle) {
         menuToggle.onclick = () => {
-            if (sidebar.classList.contains('open')) closeMenu();
+            if (sidebar && sidebar.classList.contains('open')) closeMenu();
             else openMenu();
         };
     }
@@ -166,6 +168,7 @@ function initMenu() {
 }
 
 window.onload = () => {
+    // 1. Podstawowa inicjalizacja (bezpieczna)
     const savedTheme = localStorage.getItem('ls_theme') || 'dark';
     document.body.setAttribute('data-theme', savedTheme);
     document.documentElement.setAttribute('data-theme', savedTheme);
@@ -180,19 +183,39 @@ window.onload = () => {
 
     updateThemeIcon(savedTheme);
 
-    initGauge();
-    initCharts(); 
-    initHistoryEvents();
-    initMenu(); 
+    // 2. Inicjalizacja komponentów wizualnych (try-catch, aby nie zabić aplikacji przy braku CDN)
+    try {
+        initGauge();
+    } catch (e) {
+        console.error("Gauge init failed (CDN issue?):", e);
+        // Możemy ukryć sekcję zegara lub wyświetlić info
+        const gaugeEl = el('speed-gauge');
+        if(gaugeEl) gaugeEl.style.display = 'none';
+    }
 
-    loadSettings().then(() => loadHistory());
+    try {
+        initCharts(); 
+    } catch (e) {
+        console.error("Charts init failed (CDN issue?):", e);
+    }
 
-    // --- POPRAWKA: Automatyczne odświeżanie tabeli po teście ---
-    window.addEventListener('historyUpdated', () => {
-        // Po otrzymaniu zdarzenia z data_sync.js, ładujemy 1. stronę historii
-        loadHistory(1);
-    });
-    // -----------------------------------------------------------
+    // 3. Inicjalizacja logiki aplikacji (To musi działać nawet bez wykresów)
+    try {
+        initHistoryEvents();
+        initMenu(); 
+    
+        // Ładujemy ustawienia - to jest kluczowe, bo sprawdza połączenie z API
+        loadSettings()
+            .then(() => loadHistory())
+            .catch(e => console.error("Critical: API connection failed:", e));
+    
+        // --- POPRAWKA: Automatyczne odświeżanie tabeli po teście ---
+        window.addEventListener('historyUpdated', () => {
+            loadHistory(1);
+        });
+    } catch (e) {
+        console.error("Core init failed:", e);
+    }
     
     const urlParams = new URLSearchParams(window.location.search);
     
@@ -205,64 +228,63 @@ window.onload = () => {
     }
 
     // --- NOWE: OBSŁUGA PRZEWIJANIA DO SEKCJI PO ZAŁADOWANIU ---
-    // Sprawdzamy czy w URL jest ?section=history
     if (urlParams.get('section') === 'history') {
         const navHistory = el('nav-history');
         const navDashboard = el('nav-dashboard');
         
-        // Ustawiamy aktywny link w menu
         if (navHistory) navHistory.classList.add('active');
         if (navDashboard) navDashboard.classList.remove('active');
 
-        // Czekamy 500ms aby strona się ułożyła (wykresy, responsywność)
         setTimeout(() => {
             const section = el('history-section');
             if (section) {
                 section.scrollIntoView({ behavior: 'smooth' });
-                
-                // Czyścimy URL aby po odświeżeniu nie skakało znowu
                 window.history.replaceState({}, document.title, "/");
             }
         }, 500);
     }
 
-    el('start-btn').onclick = startTest;
+    const startBtn = el('start-btn');
+    if(startBtn) startBtn.onclick = startTest;
 
     const logoutBtn = el('logout-btn');
     if(logoutBtn) logoutBtn.onclick = handleLogout;
 
-    el('lang-toggle').onclick = () => { 
+    const langToggle = el('lang-toggle');
+    if(langToggle) langToggle.onclick = () => { 
         const nextLang = lang === 'pl' ? 'en' : 'pl'; 
         setLang(nextLang);
         const currentTheme = document.body.getAttribute('data-theme');
-        updateTexts(getGaugeInstance()); 
+        try { updateTexts(getGaugeInstance()); } catch(e) { updateTexts(null); }
         saveSettings(nextLang, currentTheme, currentUnit);
         log(translations[lang].msg_lang);
     };
     
-    el('theme-toggle').onclick = () => { 
+    const themeToggle = el('theme-toggle');
+    if(themeToggle) themeToggle.onclick = () => { 
         const current = document.body.getAttribute('data-theme');
         const next = current === 'dark' ? 'light' : 'dark';
         document.body.setAttribute('data-theme', next);
-        document.documentElement.setAttribute('data-theme', next); // Update HTML too
+        document.documentElement.setAttribute('data-theme', next); 
         updateThemeIcon(next);
         
-        reloadGauge(); 
-        initCharts(); 
-        updateTexts(getGaugeInstance()); 
+        try { reloadGauge(); } catch(e){}
+        try { initCharts(); } catch(e){}
+        try { updateTexts(getGaugeInstance()); } catch(e) { updateTexts(null); }
 
         saveSettings(lang, next, currentUnit);
         if(next === 'dark') log(translations[lang].msg_theme_dark);
         else log(translations[lang].msg_theme_light);
     };
 
-    el('unit-toggle').onclick = () => {
+    const unitToggle = el('unit-toggle');
+    if(unitToggle) unitToggle.onclick = () => {
         const nextUnit = (currentUnit === 'mbps') ? 'mbs' : 'mbps';
         setCurrentUnit(nextUnit);
         const currentTheme = document.body.getAttribute('data-theme');
         
-        reloadGauge(); 
-        updateTexts(getGaugeInstance());
+        try { reloadGauge(); } catch(e){}
+        try { updateTexts(getGaugeInstance()); } catch(e) { updateTexts(null); }
         updateStatTiles(lastResultDown, lastResultUp); 
         loadHistory(); 
         
@@ -279,6 +301,8 @@ window.onload = () => {
         if (currentWidth === lastWidth) return;
         lastWidth = currentWidth;
         clearTimeout(resizeTimeout); 
-        resizeTimeout = setTimeout(reloadGauge, 200); 
+        resizeTimeout = setTimeout(() => {
+             try { reloadGauge(); } catch(e){}
+        }, 200); 
     };
 };
