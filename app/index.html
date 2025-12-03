@@ -7,9 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     
-    <!-- Favicon FIX: Zmiana na format ICO (preferowany przez wiele systemów i urządzeń mobilnych) -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <!-- Nadal używamy apple-touch-icon, ale dla .ico jest on mniej krytyczny niż dla .svg -->
     <link rel="apple-touch-icon" href="/favicon.ico">
 
     <!-- CSS -->
@@ -27,7 +25,6 @@
 
     <script>
         (function() {
-            // FIX: Funkcja do konwersji HEX na RGB dla dynamicznego koloru w CSS
             function hexToRgb(hex) {
                 let c;
                 if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
@@ -41,7 +38,6 @@
                 return null;
             }
 
-            // --- JĘZYK I MOTYW ---
             const savedTheme = localStorage.getItem('ls_theme') || 'dark';
             document.documentElement.setAttribute('data-theme', savedTheme);
             
@@ -52,8 +48,7 @@
                 if(rgb) document.documentElement.style.setProperty('--primary-rgb', rgb);
             }
 
-            // KRUCJALNA ZMIANA (FIX FOUC): Ustawiamy atrybut lang elementu <html> PRZED renderowaniem ciała strony.
-            const savedLang = localStorage.getItem('ls_lang') || 'en'; // Domyślnie na EN
+            const savedLang = localStorage.getItem('ls_lang') || 'en';
             document.documentElement.setAttribute('lang', savedLang);
         })();
     </script>
@@ -68,7 +63,6 @@
                 <span class="material-icons">menu</span>
             </button>
 
-            <!-- ZMIANA: Klikalne Logo (Link do /) - usunięto ikonę speed -->
             <a href="/" class="logo" style="text-decoration: none;">
                 LocalSpeed <small style="font-size: 0.6em; opacity: 0.7; margin-left: 5px;">PRO</small>
             </a>
@@ -85,7 +79,6 @@
 
     <div class="app-layout">
         
-        <!-- FIX FOUC: Domyślnie ukrywamy sidebar za pomocą klasy "untranslated" -->
         <aside class="sidebar untranslated" id="app-sidebar">
             <div class="sidebar-mobile-header">
                 <span class="material-icons">speed</span>
@@ -121,6 +114,12 @@
                         <span class="material-icons">network_check</span>
                         <span id="ping-text">--</span> ms
                     </div>
+                    
+                    <button id="mode-toggle" class="mode-switch" title="Zmień tryb połączenia">
+                        <span class="material-icons">hub</span>
+                        <span id="mode-text" data-key="mode_multi">Multi</span>
+                    </button>
+
                     <button id="unit-toggle" class="unit-switch" title="Przełącz jednostkę">Mbps</button>
                 </div>
 
@@ -160,7 +159,6 @@
             </div>
 
             <div class="bottom-section">
-                <!-- ID history-section jest celem linku z settings -->
                 <div class="history-container" id="history-section">
                     <div class="history-header">
                         <h3 data-key="history_title">Historia Pomiarów</h3>
@@ -186,6 +184,11 @@
                                     </th>
                                     <th class="sortable" data-sort="date">
                                         <span data-key="table_date">Data</span> 
+                                        <span class="sort-icon material-icons">unfold_more</span>
+                                    </th>
+                                    <!-- NOWA KOLUMNA -->
+                                    <th class="sortable" data-sort="mode">
+                                        <span data-key="table_mode">Tryb</span> 
                                         <span class="sort-icon material-icons">unfold_more</span>
                                     </th>
                                     <th class="sortable" data-sort="ping">

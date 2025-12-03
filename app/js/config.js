@@ -1,5 +1,15 @@
-export const THREADS = 6; 
+// Odczytujemy zapisaną wartość przy starcie. Domyślnie 12 (Multi).
+const savedThreads = localStorage.getItem('ls_threads');
+export let THREADS = savedThreads ? parseInt(savedThreads) : 12;
+
 export const TEST_DURATION = 12000; 
+
+// Funkcja do zmiany liczby wątków
+export function setThreads(n) {
+    THREADS = n;
+    // Zapisujemy wybór użytkownika
+    localStorage.setItem('ls_threads', n);
+}
 
 export const translations = {
     pl: { 
@@ -9,6 +19,7 @@ export const translations = {
         up: "Wysyłanie", 
         
         table_date: "Data",
+        table_mode: "Tryb", // Nowa kolumna
         table_ping: "Ping",
         table_down: "Pobieranie",
         table_up: "Wysyłanie",
@@ -23,6 +34,11 @@ export const translations = {
         msg_deleted: "Usunięto wpisy.",
 
         gauge_title: "PRĘDKOŚĆ",
+        
+        mode_single: "Single",
+        mode_multi: "Multi",
+        msg_mode_single: "Tryb połączenia: Pojedyncze",
+        msg_mode_multi: "Tryb połączenia: Wiele",
 
         log_start: "Start testu", 
         log_end: "Koniec testu", 
@@ -43,7 +59,7 @@ export const translations = {
 
         // --- SETTINGS PAGE ---
         settings_title: "Ustawienia",
-        settings_appearance: "Personalizacja", // ZMIANA
+        settings_appearance: "Personalizacja", 
         settings_oidc_title: "Logowanie OIDC (SSO)",
         settings_oidc_desc: "Skonfiguruj logowanie przez OpenID Connect (np. Authentik, Keycloak, Google).",
         settings_backup_title: "Kopia Zapasowa",
@@ -77,7 +93,6 @@ export const translations = {
         btn_backup_now: "WYŚLIJ TERAZ",
         help_gdrive_config: "Jak skonfigurować Client ID/Secret?",
         
-        // NOWE TŁUMACZENIA GDRIVE
         lbl_last_backup: "Ostatni backup:",
         lbl_next_backup: "Następny backup:",
         status_connected: "Status: Połączono",
@@ -108,6 +123,7 @@ export const translations = {
         up: "Upload", 
         
         table_date: "Date",
+        table_mode: "Mode", // Nowa kolumna
         table_ping: "Ping",
         table_down: "Download",
         table_up: "Upload",
@@ -122,6 +138,11 @@ export const translations = {
         msg_deleted: "Entries deleted.",
 
         gauge_title: "SPEED",
+        
+        mode_single: "Single",
+        mode_multi: "Multi",
+        msg_mode_single: "Connection mode: Single",
+        msg_mode_multi: "Connection mode: Multi",
 
         log_start: "Starting test", 
         log_end: "Test finished.", 
@@ -142,7 +163,7 @@ export const translations = {
 
         // --- SETTINGS PAGE ---
         settings_title: "Settings",
-        settings_appearance: "Personalization", // ZMIANA
+        settings_appearance: "Personalization", 
         settings_oidc_title: "OIDC Login (SSO)",
         settings_oidc_desc: "Configure OpenID Connect login (e.g. Authentik, Keycloak, Google).",
         settings_backup_title: "Backup",
@@ -176,7 +197,6 @@ export const translations = {
         btn_backup_now: "BACKUP NOW",
         help_gdrive_config: "How to configure Client ID/Secret?",
         
-        // NEW GDRIVE TRANSLATIONS
         lbl_last_backup: "Last backup:",
         lbl_next_backup: "Next backup:",
         status_connected: "Status: Connected",

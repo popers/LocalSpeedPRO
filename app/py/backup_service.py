@@ -14,7 +14,6 @@ SCOPES = ['https://www.googleapis.com/auth/drive.file']
 def generate_sql_dump(db: Session) -> str:
     """
     Generuje prosty zrzut SQL (INSERTY) dla tabel settings i results.
-    Używane zamiast kopiowania pliku .db, co pozwala na backup bazy MariaDB.
     """
     lines = []
     lines.append("-- LocalSpeed Pro SQL Dump")
@@ -24,12 +23,10 @@ def generate_sql_dump(db: Session) -> str:
     # 1. Settings
     settings = db.query(Settings).filter(Settings.id == 1).first()
     if settings:
-        # Helper do formatowania wartości SQL
         def fmt(val):
             if val is None: return "NULL"
             if isinstance(val, bool): return "1" if val else "0"
             if isinstance(val, (int, float)): return str(val)
-            # Escape single quotes
             safe_str = str(val).replace("'", "''")
             return f"'{safe_str}'"
 
@@ -41,7 +38,6 @@ def generate_sql_dump(db: Session) -> str:
         ]
         
         vals = []
-        # Pobieramy wartości dynamicznie
         for col in cols:
             vals.append(fmt(getattr(settings, col)))
             
@@ -52,44 +48,34 @@ def generate_sql_dump(db: Session) -> str:
     
     lines.append("")
     
-    # 2. Results
+    # 2. Results (Zaktualizowano o 'mode')
     results = db.query(SpeedResult).all()
     for res in results:
-        # Formatowanie wartości dla results
-        # id, date, ping, download, upload, lang, theme
+        # id, date, ping, download, upload, lang, theme, mode
         date_safe = str(res.date).replace("'", "''")
         lang_safe = str(res.lang).replace("'", "''")
         theme_safe = str(res.theme).replace("'", "''")
+        mode_safe = str(res.mode or 'Multi').replace("'", "''") # Default to Multi if null
         
         lines.append(
-            f"INSERT INTO results (id, date, ping, download, upload, lang, theme) "
-            f"VALUES ({res.id}, '{date_safe}', {res.ping}, {res.download}, {res.upload}, '{lang_safe}', '{theme_safe}');"
+            f"INSERT INTO results (id, date, ping, download, upload, lang, theme, mode) "
+            f"VALUES ({res.id}, '{date_safe}', {res.ping}, {res.download}, {res.upload}, '{lang_safe}', '{theme_safe}', '{mode_safe}');"
         )
         
     return "\n".join(lines)
 
 def cleanup_old_backups(service, folder_id, retention_days):
-    """
-    Usuwa z Google Drive pliki starsze niż retention_days znajdujące się w folderze backupu.
-    """
     if not retention_days or retention_days <= 0:
         return 0
 
     deleted_count = 0
     try:
-        # Google Drive API używa UTC w formacie RFC 3339
-        # Obliczamy datę graniczną: teraz (UTC) - liczba dni
         cutoff_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=retention_days)
         cutoff_str = cutoff_date.isoformat()
 
         logger.info(f"Retencja: Sprawdzanie plików starszych niż {cutoff_str} (dni: {retention_days})")
 
-        # Zapytanie: pliki w danym folderze ORAZ nie w koszu ORAZ utworzone przed datą graniczną
-        # Uwaga: używamy apostrofów dla stringów w query
         q = f"'{folder_id}' in parents and trashed = false and createdTime < '{cutoff_str}'"
-        
-        # Pobieramy listę plików spełniających kryteria
-        # spaces='drive' szuka w dysku użytkownika
         results = service.files().list(q=q, spaces='drive', fields='files(id, name, createdTime)').execute()
         files = results.get('files', [])
 
@@ -110,10 +96,6 @@ def cleanup_old_backups(service, folder_id, retention_days):
     return deleted_count
 
 def perform_backup_logic(db: Session):
-    """
-    Logika wykonania backupu (Google Drive).
-    Zawiera generowanie SQL, upload i czyszczenie starych plików (retencję).
-    """
     settings = db.query(Settings).filter(Settings.id == 1).first()
     
     if not settings:
@@ -123,11 +105,9 @@ def perform_backup_logic(db: Session):
         return {"status": "skipped", "message": "GDrive disabled or token missing"}
 
     try:
-        # Autoryzacja
         creds = Credentials.from_authorized_user_info(json.loads(settings.gdrive_token_json), SCOPES)
         service = build('drive', 'v3', credentials=creds)
         
-        # Sprawdzenie/Tworzenie folderu
         folder_id = None
         folder_name = settings.gdrive_folder_name or "LocalSpeed_Backup"
         
@@ -142,13 +122,11 @@ def perform_backup_logic(db: Session):
         else:
             folder_id = items[0]['id']
 
-        # Generowanie SQL
         sql_content = generate_sql_dump(db)
         
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
         file_name = f"localspeed_backup_{timestamp}.sql"
         
-        # Upload jako strumień pamięci (bez zapisu na dysk)
         fh = io.BytesIO(sql_content.encode('utf-8'))
         media = MediaIoBaseUpload(fh, mimetype='application/sql', resumable=True)
         
@@ -160,13 +138,10 @@ def perform_backup_logic(db: Session):
             fields='id'
         ).execute()
 
-        # --- LOGIKA RETENCJI (NOWOŚĆ) ---
         retention_days = settings.gdrive_retention_days
         if retention_days and retention_days > 0:
             cleanup_old_backups(service, folder_id, retention_days)
-        # --------------------------------
 
-        # Aktualizacja statusu w bazie
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         settings.gdrive_last_backup = now_str
         settings.gdrive_status = "Sukces (Auto)"

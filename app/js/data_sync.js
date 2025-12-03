@@ -5,7 +5,6 @@ import { initCharts } from './charts.js';
 
 export async function loadSettings() {
     try {
-        // ZMIANA: Dodano cache: 'no-store' aby przeglądarka nie brała starych danych
         const res = await fetch('/api/settings', { cache: "no-store" });
         if (!res.ok) throw new Error("API Error");
         
@@ -81,13 +80,21 @@ export async function saveSettings(newLang, newTheme, newUnit, newColor) {
     }
 }
 
-export async function saveResult(ping, down, up) {
+// ZMIANA: Dodano parametr mode
+export async function saveResult(ping, down, up, mode = "Multi") {
     try {
         const currentTheme = document.body.getAttribute('data-theme') || 'dark';
         const res = await fetch('/api/history', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ ping, download: down, upload: up, lang, theme: currentTheme })
+            body: JSON.stringify({ 
+                ping, 
+                download: down, 
+                upload: up, 
+                lang, 
+                theme: currentTheme,
+                mode: mode // Przesyłamy tryb
+            })
         });
         
         if (res.ok) {

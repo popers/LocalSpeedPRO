@@ -1,5 +1,3 @@
-# Moduł obsługujący endpointy API dla historii pomiarów
-
 import datetime
 import logging
 import csv
@@ -8,11 +6,36 @@ from typing import List
 from fastapi import APIRouter, Request, Depends, Body
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc, asc
-from .database import get_db, SpeedResult
+from sqlalchemy import func, desc, asc, text, inspect
+from .database import get_db, SpeedResult, engine
 
 logger = logging.getLogger("LocalSpeedHistoryAPI")
 router = APIRouter()
+
+# --- MIGRACJA DLA TABELI WYNIKÓW ---
+def ensure_results_columns():
+    """Sprawdza i dodaje brakujące kolumny w tabeli results."""
+    try:
+        inspector = inspect(engine)
+        if not inspector.has_table("results"): return
+
+        columns_info = inspector.get_columns("results")
+        existing_columns = [col['name'] for col in columns_info]
+        
+        if "mode" not in existing_columns:
+            logger.info("Migracja: Dodawanie kolumny 'mode' do tabeli results...")
+            try:
+                with engine.connect() as connection:
+                    # SQLite i MySQL wspierają ADD COLUMN
+                    connection.execute(text(f"ALTER TABLE results ADD COLUMN mode VARCHAR(10) DEFAULT 'Multi'"))
+                    connection.commit()
+            except Exception as ex:
+                logger.error(f"Błąd dodawania kolumny mode: {ex}")
+    except Exception as e:
+        logger.error(f"Błąd migracji results: {e}")
+
+# Wywołujemy migrację przy imporcie modułu (lub pierwszym użyciu)
+ensure_results_columns()
 
 @router.get("/api/history")
 def read_history(
@@ -25,20 +48,17 @@ def read_history(
     """Pobiera historię pomiarów z paginacją i sortowaniem."""
     offset = (page - 1) * limit
     
-    # Mapowanie nazw kolumn z frontend na model SQLAlchemy
-    sort_column = SpeedResult.date # Default
+    sort_column = SpeedResult.date 
     if sort_by == 'ping': sort_column = SpeedResult.ping
     elif sort_by == 'download': sort_column = SpeedResult.download
     elif sort_by == 'upload': sort_column = SpeedResult.upload
+    elif sort_by == 'mode': sort_column = SpeedResult.mode # Sortowanie po trybie
     
-    # Kierunek sortowania
     sort_func = desc if order == 'desc' else asc
 
     try:
-        # Całkowita liczba rekordów (do paginacji)
         total_count = db.query(func.count(SpeedResult.id)).scalar()
         
-        # Zapytanie z sortowaniem i paginacją
         results = db.query(SpeedResult)\
             .order_by(sort_func(sort_column))\
             .offset(offset)\
@@ -62,13 +82,13 @@ async def save_result(request: Request, db: Session = Depends(get_db)):
         data = await request.json()
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # Walidacja i konwersja do modelu
         new_result = SpeedResult(
             ping=data['ping'],
             download=data['download'],
             upload=data['upload'],
             lang=data.get('lang', 'pl'),
             theme=data.get('theme', 'dark'),
+            mode=data.get('mode', 'Multi'), # Zapisujemy tryb
             date=now_str
         )
         db.add(new_result)
@@ -80,12 +100,8 @@ async def save_result(request: Request, db: Session = Depends(get_db)):
 
 @router.delete("/api/history")
 async def delete_results(ids: List[int] = Body(...), db: Session = Depends(get_db)):
-    """Usuwa wybrane wyniki z bazy danych."""
     try:
-        if not ids:
-            return {"status": "no_ids_provided"}
-            
-        # Usuwanie rekordów, których ID znajduje się na liście
+        if not ids: return {"status": "no_ids_provided"}
         db.query(SpeedResult).filter(SpeedResult.id.in_(ids)).delete(synchronize_session=False)
         db.commit()
         return {"status": "deleted", "count": len(ids)}
@@ -97,47 +113,38 @@ async def delete_results(ids: List[int] = Body(...), db: Session = Depends(get_d
 def export_history_csv(
     unit: str = 'mbps', 
     h_date: str = 'Date', 
+    h_mode: str = 'Mode', # Nowy nagłówek
     h_ping: str = 'Ping',
     h_down: str = 'Download', 
     h_up: str = 'Upload', 
     db: Session = Depends(get_db)
 ):
-    """
-    Generuje i zwraca plik CSV z całą historią.
-    Parametr unit='mbs' konwertuje wartości na MB/s.
-    Parametry h_* pozwalają na tłumaczenie nagłówków kolumn.
-    Nazwa pliku zawiera teraz znacznik czasu.
-    """
     try:
-        # Pobieramy wszystkie dane, sortując od najnowszych
         results = db.query(SpeedResult).order_by(desc(SpeedResult.date)).all()
         
-        # Tworzymy strumień w pamięci
         output = io.StringIO()
         writer = csv.writer(output)
         
         is_mbs = (unit == 'mbs')
         unit_label = 'MB/s' if is_mbs else 'Mbps'
         
-        # Nagłówki z uwzględnieniem jednostki i języka.
-        writer.writerow([h_date, f'{h_ping} (ms)', f'{h_down} ({unit_label})', f'{h_up} ({unit_label})'])
+        # Zaktualizowany nagłówek CSV
+        writer.writerow([h_date, h_mode, f'{h_ping} (ms)', f'{h_down} ({unit_label})', f'{h_up} ({unit_label})'])
         
-        # Dane
         for row in results:
-            # Konwersja jeśli potrzebna (baza trzyma dane w Mbps)
             down_val = row.download / 8.0 if is_mbs else row.download
             up_val = row.upload / 8.0 if is_mbs else row.upload
+            mode_val = row.mode if row.mode else "Multi"
             
             writer.writerow([
                 row.date, 
+                mode_val,
                 f"{row.ping:.2f}", 
                 f"{down_val:.2f}", 
                 f"{up_val:.2f}"
             ])
             
         output.seek(0)
-        
-        # Generowanie nazwy pliku z datą i godziną (np. localspeed_history_2023-11-29_14-30-00.csv)
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         filename = f"localspeed_history_{timestamp}.csv"
         

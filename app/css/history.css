@@ -10,11 +10,6 @@
     flex-direction: column;
 }
 
-/* KLUCZOWA ZMIANA: scroll-margin-top 
-   To sprawia, że gdy wchodzisz z linku /#history-section, 
-   przeglądarka zatrzymuje się 90px przed elementem.
-   Header ma 70px, więc dajemy 90px, aby był ładny odstęp.
-*/
 #history-section {
     scroll-margin-top: 90px;
 }
@@ -128,7 +123,7 @@ input[type="checkbox"] {
 th .sort-icon {
     font-size: 18px; 
     vertical-align: middle;
-    margin-left: 5px;
+    margin-left: 2px;
     opacity: 0.2; 
     transition: opacity 0.2s, color 0.2s;
     display: inline-block;
@@ -238,3 +233,55 @@ tr.selected {
     border-radius: 4px;
 }
 .btn-text:hover { background: rgba(128,128,128,0.1); }
+
+/* --- STYLIZACJA JEDNOSTEK W TABELI --- */
+.mobile-unit {
+    margin-left: 4px; /* Odstęp na Desktopie */
+}
+
+/* --- STYLIZACJA KOLUMNY TRYB (MODE) --- */
+.mode-cell {
+    display: flex;
+    /* ZMIANA: flex-flow wymusza, aby na desktopie nie łamało linii */
+    flex-flow: row nowrap; 
+    align-items: center;
+    justify-content: flex-start; /* Desktop: do lewej */
+    gap: 5px;
+    opacity: 0.8;
+}
+
+.mode-cell .material-icons {
+    font-size: 20px;
+}
+
+.mode-cell span {
+    font-size: 0.85rem;
+    white-space: nowrap; 
+}
+
+/* MOBILE: Jednostki pod spodem i Tryb pionowo */
+@media (max-width: 900px) {
+    .mobile-unit {
+        display: block;
+        margin-left: 0;
+        font-size: 0.75rem;
+        opacity: 0.7;
+        line-height: 1.2;
+        margin-top: 2px;
+    }
+
+    /* Tryb pionowo na telefonach */
+    .mode-cell {
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start; /* ZMIANA: Wyrównanie do lewej na mobile */
+        gap: 2px;
+    }
+    
+    .mode-cell span {
+        font-size: 0.7rem;
+        line-height: 1;
+    }
+
+    /* USUNIĘTO: Centrowanie nagłówka, teraz wszystko jest do lewej */
+}

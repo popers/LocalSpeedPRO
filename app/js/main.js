@@ -13,7 +13,7 @@ import {
     formatSpeed,
     timeout 
 } from '/js/utils.js';
-import { translations, TEST_DURATION } from '/js/config.js'; 
+import { translations, TEST_DURATION, THREADS, setThreads } from '/js/config.js';
 import { initGauge, reloadGauge, getGaugeInstance } from '/js/gauge.js';
 import { initCharts, resetCharts } from '/js/charts.js';
 import { loadSettings, saveSettings, saveResult } from '/js/data_sync.js';
@@ -40,7 +40,6 @@ async function startTest() {
 
     el('speed-value').innerText = "0.00";
     
-    // Zabezpieczenie: Próba przeładowania zegara i wykresów
     try { reloadGauge(); } catch(e) { console.warn("Gauge error:", e); }
     try { resetCharts(); } catch(e) { console.warn("Charts error:", e); }
 
@@ -87,10 +86,11 @@ async function startTest() {
         }
         el('speed-value').innerText = "0.00";
         await new Promise(r => setTimeout(r, 1200));
-        if (gaugeInstance) gaugeInstance.update({ animationDuration: 100 });
+        if (gaugeInstance) gaugeInstance.update({ animationDuration: 100 }); 
 
-        // 4. SAVE
-        await saveResult(ping, down, up); 
+        // 4. SAVE (Przekazujemy tryb)
+        const currentMode = (THREADS > 1) ? "Multi" : "Single";
+        await saveResult(ping, down, up, currentMode); 
         
     } catch (error) {
         console.error("Błąd podczas testu:", error);
@@ -112,7 +112,6 @@ async function startTest() {
     }
 }
 
-// --- OBSŁUGA MENU ---
 function initMenu() {
     const sidebar = el('app-sidebar');
     const overlay = el('sidebar-overlay');
@@ -163,12 +162,10 @@ function initMenu() {
         };
     }
     
-    // Jeśli załadowaliśmy się na stronie głównej, oznaczamy Dashboard jako aktywny
     if(navDashboard) navDashboard.classList.add('active');
 }
 
 window.onload = () => {
-    // 1. Podstawowa inicjalizacja (bezpieczna)
     const savedTheme = localStorage.getItem('ls_theme') || 'dark';
     document.body.setAttribute('data-theme', savedTheme);
     document.documentElement.setAttribute('data-theme', savedTheme);
@@ -183,12 +180,10 @@ window.onload = () => {
 
     updateThemeIcon(savedTheme);
 
-    // 2. Inicjalizacja komponentów wizualnych (try-catch, aby nie zabić aplikacji przy braku CDN)
     try {
         initGauge();
     } catch (e) {
-        console.error("Gauge init failed (CDN issue?):", e);
-        // Możemy ukryć sekcję zegara lub wyświetlić info
+        console.error("Gauge init failed:", e);
         const gaugeEl = el('speed-gauge');
         if(gaugeEl) gaugeEl.style.display = 'none';
     }
@@ -196,20 +191,17 @@ window.onload = () => {
     try {
         initCharts(); 
     } catch (e) {
-        console.error("Charts init failed (CDN issue?):", e);
+        console.error("Charts init failed:", e);
     }
 
-    // 3. Inicjalizacja logiki aplikacji (To musi działać nawet bez wykresów)
     try {
         initHistoryEvents();
         initMenu(); 
     
-        // Ładujemy ustawienia - to jest kluczowe, bo sprawdza połączenie z API
         loadSettings()
             .then(() => loadHistory())
             .catch(e => console.error("Critical: API connection failed:", e));
     
-        // --- POPRAWKA: Automatyczne odświeżanie tabeli po teście ---
         window.addEventListener('historyUpdated', () => {
             loadHistory(1);
         });
@@ -219,7 +211,6 @@ window.onload = () => {
     
     const urlParams = new URLSearchParams(window.location.search);
     
-    // Obsługa komunikatu o zalogowaniu
     if (urlParams.get('login') === 'success') {
         setTimeout(() => {
             log(translations[lang].msg_login_success);
@@ -227,7 +218,6 @@ window.onload = () => {
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-    // --- NOWE: OBSŁUGA PRZEWIJANIA DO SEKCJI PO ZAŁADOWANIU ---
     if (urlParams.get('section') === 'history') {
         const navHistory = el('nav-history');
         const navDashboard = el('nav-dashboard');
@@ -292,6 +282,40 @@ window.onload = () => {
         if(nextUnit === 'mbps') log(translations[lang].msg_unit_mbps);
         else log(translations[lang].msg_unit_mbs);
     };
+
+    const modeToggle = el('mode-toggle');
+    const modeText = el('mode-text');
+    
+    // --- FUNKCJA AKTUALIZUJĄCA UI PRZYCISKU MULTI/SINGLE ---
+    const updateModeUI = () => {
+        if (!modeToggle || !modeText) return;
+        
+        if (THREADS > 1) {
+            modeText.innerText = "Multi";
+            modeText.setAttribute('data-key', 'mode_multi');
+            modeToggle.querySelector('.material-icons').innerText = "hub";
+        } else {
+            modeText.innerText = "Single";
+            modeText.setAttribute('data-key', 'mode_single');
+            modeToggle.querySelector('.material-icons').innerText = "device_hub"; 
+        }
+    };
+
+    // Wywołujemy od razu po załadowaniu (wczyta z localStorage przez config.js)
+    updateModeUI();
+    
+    if(modeToggle) {
+        modeToggle.onclick = () => {
+            if (THREADS > 1) {
+                setThreads(1);
+                log(translations[lang].msg_mode_single || "Tryb: Pojedyncze połączenie");
+            } else {
+                setThreads(12);
+                log(translations[lang].msg_mode_multi || "Tryb: Wiele połączeń");
+            }
+            updateModeUI();
+        };
+    }
 
     let resizeTimeout;
     let lastWidth = window.innerWidth; 

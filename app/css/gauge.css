@@ -66,7 +66,7 @@
     margin-bottom: 10px; 
 }
 
-/* PRZEŁĄCZNIK JEDNOSTEK */
+/* PRZEŁĄCZNIK JEDNOSTEK (PRAWY DOLNY) */
 .unit-switch {
     position: absolute;
     bottom: 20px;
@@ -95,31 +95,57 @@
     box-shadow: 0 4px 10px rgba(var(--primary-rgb), 0.3);
     transform: translateY(-1px);
 }
-
 .unit-switch:active { transform: translateY(0); }
+
+/* NOWY PRZEŁĄCZNIK TRYBU (LEWY DOLNY) */
+.mode-switch {
+    position: absolute;
+    bottom: 20px;
+    left: 20px; /* Po przeciwnej stronie niż unit-switch */
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    z-index: 20;
+}
+
+.mode-switch:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    box-shadow: 0 4px 10px rgba(var(--primary-rgb), 0.3);
+    transform: translateY(-1px);
+}
+.mode-switch:active { transform: translateY(0); }
+.mode-switch .material-icons { font-size: 18px; }
+
 
 /* --- STYLE DLA WERSJI MOBILNEJ --- */
 @media (max-width: 900px) {
     .gauge-section {
-        /* Wymuszamy brak paddingu, żeby licznik dotykał krawędzi */
         padding: 10px 0 0 0 !important;
         min-height: 300px; 
     }
 
     .digital-box {
-        /* ZMIANA: Powiększenie boxa (było 4px 12px) */
         padding: 6px 20px;
-        /* ZMIANA: Szerszy box (było 80px) */
         min-width: 100px;
         border-radius: 8px;
-        /* ZMIANA: Podnosimy box wyżej (było -15px, dajemy -40px), 
-           aby oddalić go od pingu i "wbić" lekko w tarczę */
         margin-top: -40px; 
         margin-bottom: 0.8rem;
     }
 
     .digital-box span#speed-value {
-        /* ZMIANA: Większa czcionka (było 1.1rem) */
         font-size: 1.5rem; 
     }
 
@@ -128,9 +154,17 @@
         font-size: 0.9rem;
     }
 
+    /* Dopasowanie pozycji przycisków na mobile */
     .unit-switch {
         bottom: 10px;
         right: 10px;
+        padding: 6px 12px;
+        font-size: 0.75rem;
+    }
+
+    .mode-switch {
+        bottom: 10px;
+        left: 10px;
         padding: 6px 12px;
         font-size: 0.75rem;
     }

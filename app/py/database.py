@@ -59,6 +59,8 @@ class SpeedResult(Base):
     upload = Column(Float)
     lang = Column(String(10), default="en") 
     theme = Column(String(20), default="dark")
+    # NOWA KOLUMNA
+    mode = Column(String(10), default="Multi") 
 
 class Settings(Base):
     __tablename__ = "settings"
@@ -88,17 +90,12 @@ class Settings(Base):
 
 # --- FUNKCJA OCZEKUJĄCA NA BAZĘ (WAIT-FOR-DB) ---
 def wait_for_db_connection(max_retries=15, wait_seconds=2):
-    """
-    Próbuje nawiązać połączenie z bazą danych w pętli.
-    Blokuje start aplikacji do momentu sukcesu lub wyczerpania prób.
-    """
     if DB_TYPE != "mysql":
         return True
 
     logger.info("Oczekiwanie na połączenie z bazą danych...")
     for i in range(max_retries):
         try:
-            # Próba prostego połączenia
             with engine.connect() as connection:
                 connection.execute(text("SELECT 1"))
             logger.info("Połączenie z bazą danych nawiązane!")
@@ -114,13 +111,11 @@ def wait_for_db_connection(max_retries=15, wait_seconds=2):
     return False
 
 # --- INICJALIZACJA TABEL ---
-# Najpierw czekamy na bazę, potem tworzymy tabele
 if wait_for_db_connection():
     try:
         Base.metadata.create_all(bind=engine)
         logger.info("Tabele bazy danych są gotowe.")
     except OperationalError as e:
-        # Ignorujemy błąd wyścigu "Table already exists" przy wielu workerach
         if e.orig and e.orig.args[0] == 1050:
             logger.warning("Tabele już istnieją (ignorowanie wyścigu).")
         else:

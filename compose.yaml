@@ -9,7 +9,7 @@ services:
       db:
         condition: service_healthy  # KLUCZOWE: Czekaj aż baza będzie 'healthy'
     environment:
-      - WEB_CONCURRENCY=8
+      #- WEB_CONCURRENCY=8
       - TZ=Europe/Warsaw
       - APP_USER=${APP_USER:-admin}
       - APP_PASSWORD=${APP_PASSWORD:-admin}
