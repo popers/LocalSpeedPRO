@@ -13,6 +13,7 @@ services:
       - TZ=Europe/Warsaw
       - APP_USER=${APP_USER:-admin}
       - APP_PASSWORD=${APP_PASSWORD:-admin}
+      - AUTH_ENABLED=${AUTH_ENABLED:-true}
       - DB_TYPE=mysql
       - DB_HOST=db
       - DB_PORT=3306

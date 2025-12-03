@@ -13,6 +13,9 @@ router = APIRouter()
 
 APP_USER = os.getenv("APP_USER", "admin")
 APP_PASSWORD = os.getenv("APP_PASSWORD", "admin")
+# Dodajemy odczyt zmiennej globalnej również tutaj, aby API mogło ją zwrócić
+AUTH_ENABLED = os.getenv("AUTH_ENABLED", "true").lower() == "true"
+
 COOKIE_NAME = "localspeed_session"
 
 class LoginData(BaseModel):
@@ -31,12 +34,21 @@ def get_oidc_settings(db: Session):
 
 @router.get("/api/auth/status")
 async def auth_status(db: Session = Depends(get_db)):
-    """Publiczny endpoint dla strony logowania, by sprawdzić czy OIDC jest włączone."""
+    """
+    Publiczny endpoint informujący frontend o stanie autoryzacji.
+    Zwraca: czy OIDC jest włączone ORAZ czy logowanie w ogóle jest włączone.
+    """
     s = db.query(Settings).filter(Settings.id == 1).first()
-    return {"oidc_enabled": s.oidc_enabled if s else False}
+    return {
+        "oidc_enabled": s.oidc_enabled if s else False,
+        "auth_enabled": AUTH_ENABLED
+    }
 
 @router.post("/api/login")
 async def login(data: LoginData, response: Response):
+    if not AUTH_ENABLED:
+        return {"message": "Login not required"}
+
     if data.username == APP_USER and data.password == APP_PASSWORD:
         content = {"message": "Zalogowano pomyślnie"}
         response = JSONResponse(content=content)
@@ -64,6 +76,9 @@ async def logout(request: Request, response: Response):
 @router.get("/api/auth/oidc/login")
 async def oidc_login(request: Request, db: Session = Depends(get_db)):
     """1. Przekierowanie do dostawcy tożsamości."""
+    if not AUTH_ENABLED:
+        return RedirectResponse("/")
+
     settings = get_oidc_settings(db)
     if not settings:
         raise HTTPException(status_code=400, detail="OIDC disabled or not configured")
@@ -119,6 +134,9 @@ async def oidc_login(request: Request, db: Session = Depends(get_db)):
 @router.get("/api/auth/oidc/callback")
 async def oidc_callback(request: Request, code: str = None, state: str = None, error: str = None, db: Session = Depends(get_db)):
     """2. Powrót z kodem, wymiana na token i weryfikacja."""
+    if not AUTH_ENABLED:
+        return RedirectResponse("/")
+
     if error:
         return RedirectResponse(f"/login.html?error=oidc_provider_error&desc={error}")
     

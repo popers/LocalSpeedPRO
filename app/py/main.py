@@ -48,6 +48,12 @@ initialize_static_files()
 
 app = FastAPI(title="LocalSpeed Pro")
 
+# --- KONFIGURACJA AUTH ---
+# Sprawdzamy zmienną środowiskową (domyślnie True)
+AUTH_ENABLED = os.getenv("AUTH_ENABLED", "true").lower() == "true"
+if not AUTH_ENABLED:
+    logger.info("LOGOWANIE WYŁĄCZONE (AUTH_ENABLED=false) - Dostęp otwarty")
+
 # --- EVENTY APLIKACJI (STARTUP/SHUTDOWN) ---
 @app.on_event("startup")
 async def startup_event():
@@ -81,6 +87,11 @@ app.add_middleware(
 # --- MIDDLEWARE AUTORYZACJI ---
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
+    # 1. Jeśli logowanie jest całkowicie wyłączone w .env, przepuszczamy wszystko
+    if not AUTH_ENABLED:
+        return await call_next(request)
+
+    # 2. Lista ścieżek publicznych
     public_paths = [
         "/login.html", 
         "/api/login", 
@@ -95,6 +106,7 @@ async def auth_middleware(request: Request, call_next):
     if is_public:
         return await call_next(request)
     
+    # 3. Sprawdzenie ciasteczka
     token = request.cookies.get(COOKIE_NAME)
     if token != "authorized":
         if path.startswith("/api"):
@@ -104,6 +116,8 @@ async def auth_middleware(request: Request, call_next):
              return RedirectResponse("/login.html")
              
     response = await call_next(request)
+    
+    # Obsługa wygaśnięcia sesji
     if response.status_code == 401:
         response.delete_cookie(COOKIE_NAME)
     return response

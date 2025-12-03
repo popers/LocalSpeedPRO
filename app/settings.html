@@ -386,6 +386,16 @@
 
         async function fetchAndFillSettings() {
             try {
+                // Dodajemy sprawdzenie statusu AUTH, aby ukryć logout jeśli trzeba
+                const authRes = await fetch('/api/auth/status');
+                if (authRes.ok) {
+                    const authData = await authRes.json();
+                    if(authData.auth_enabled === false) {
+                        const logoutBtn = el('logout-btn');
+                        if(logoutBtn) logoutBtn.style.display = 'none';
+                    }
+                }
+
                 const res = await fetch(`/api/settings?t=${Date.now()}`, { cache: "no-store" });
                 if (!res.ok) throw new Error("API Error");
                 
@@ -457,12 +467,8 @@
                 const btnConnect = el('connect-gdrive-btn');
                 const t = translations[lang];
 
-                // POPRAWKA: Dynamiczne budowanie HTML ze spanami i data-key, aby updateTexts nie psuło ikony
-                // oraz aby tekst był zgodny ze stanem 'stat.connected'.
-                
                 if(stat.connected) {
                     statusText.style.color = "var(--primary)";
-                    // Kluczowe: data-key jest na wewnętrznym spanie, nie na głównym kontenerze.
                     statusText.innerHTML = `<span class="material-icons link-icon">link</span> <span data-key="status_connected">${t.status_connected || "Połączono"}</span>`;
                     
                     btnConnect.setAttribute('data-action', 'disconnect');
@@ -479,10 +485,6 @@
                     btnConnect.classList.add('btn-primary-fill');
                     btnConnect.innerHTML = `<span class="material-icons">link</span> <span data-key="btn_connect_account">${t.btn_connect_account || "POŁĄCZ"}</span>`;
                 }
-                
-                // Uruchamiamy updateTexts, aby upewnić się, że język jest spójny, ale teraz
-                // updateTexts zaktualizuje tylko wnętrze <span data-key="...">, nie ruszając ikony.
-                // updateTexts(); // Można pominąć tutaj, bo wstrzyknęliśmy poprawne t.*, ale bezpieczniej zostawić w init.
                 
             } catch(e) {}
         }

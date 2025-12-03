@@ -31,6 +31,21 @@ async function handleLogout() {
     }
 }
 
+// --- SPRAWDZENIE STATUSU AUTH DLA UI ---
+async function checkAuthUI() {
+    try {
+        const res = await fetch('/api/auth/status');
+        if(res.ok) {
+            const data = await res.json();
+            // Jeśli auth jest wyłączony, ukrywamy przycisk wylogowania
+            if (data.auth_enabled === false) {
+                const logoutBtn = el('logout-btn');
+                if (logoutBtn) logoutBtn.style.display = 'none';
+            }
+        }
+    } catch(e) { console.error("Auth check failed", e); }
+}
+
 // --- Główna funkcja uruchamiająca test ---
 async function startTest() {
     const btn = el('start-btn');
@@ -179,6 +194,7 @@ window.onload = () => {
     }
 
     updateThemeIcon(savedTheme);
+    checkAuthUI(); // Sprawdzamy czy pokazać przycisk wylogowania
 
     try {
         initGauge();
