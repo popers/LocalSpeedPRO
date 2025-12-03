@@ -452,11 +452,14 @@
                 if(stat.status) el('last-backup-status').innerText = stat.status;
                 
                 const nextInfoDiv = el('next-backup-info');
-                if(stat.connected && stat.next_backup_time) {
+                // ZMIANA: Sprawdzamy czy backend zwrócił pełną datę
+                const nextDateToShow = stat.next_backup_full_date || stat.next_backup_time;
+
+                if(stat.connected && nextDateToShow) {
                     const daysStr = formatDays(stat.next_backup_freq);
                     const t = translations[lang];
                     const every = t.txt_every || "co"; 
-                    const formattedStr = `${stat.next_backup_time} (${every} ${daysStr})`;
+                    const formattedStr = `${nextDateToShow} (${every} ${daysStr})`;
                     el('next-backup-text').innerText = formattedStr;
                     nextInfoDiv.style.display = 'block';
                 } else {

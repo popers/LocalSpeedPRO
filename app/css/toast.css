@@ -55,8 +55,6 @@
     .gauge-section {
         border-right: none;
         border-bottom: 1px solid var(--border);
-        /* ZMIANA: Usunięto padding: 1rem, który blokował powiększanie licznika.
-           Teraz padding jest kontrolowany wyłącznie przez gauge.css */
         padding: 0; 
         min-height: auto;
         flex: 1; 
@@ -105,11 +103,13 @@
         padding: 0 5px !important;
     }
 
-    /* 2. Kolumna Data - Wcześniej była first-child, teraz jest druga */
+    /* 2. Kolumna Data */
     td:nth-child(2) {
         width: 25%;
         font-size: 0.7rem;
         line-height: 1.2;
+        /* ZMIANA: Zapobieganie łamaniu daty */
+        white-space: nowrap; 
     }
     
     /* Paginacja w jednej linii na mobile */

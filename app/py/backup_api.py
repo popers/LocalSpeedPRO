@@ -216,10 +216,49 @@ async def get_backup_status(response: Response, db: Session = Depends(get_db)):
     has_token = settings.gdrive_token_json is not None and len(settings.gdrive_token_json) > 10
     connected = settings.gdrive_enabled and has_token
     
+    # --- OBLICZANIE DATY NASTĘPNEGO BACKUPU ---
+    next_backup_str = None
+    if connected and settings.gdrive_backup_time:
+        try:
+            freq = settings.gdrive_backup_frequency or 1
+            hour, minute = map(int, settings.gdrive_backup_time.split(':'))
+            
+            last_backup_dt = None
+            if settings.gdrive_last_backup:
+                try:
+                    last_backup_dt = datetime.datetime.strptime(settings.gdrive_last_backup, "%Y-%m-%d %H:%M:%S")
+                except:
+                    pass
+            
+            now = datetime.datetime.now()
+            
+            if last_backup_dt:
+                # Następny = Data ostatniego + częstotliwość, o ustawionej godzinie
+                next_date = last_backup_dt.date() + datetime.timedelta(days=freq)
+                next_dt = datetime.datetime.combine(next_date, datetime.time(hour, minute))
+                
+                # Prosta logika harmonogramu
+                # Jeśli wyliczona data jest w przeszłości (np. backup nie poszedł), 
+                # to teoretycznie scheduler powinien go odpalić "zaraz".
+                # Wyświetlamy po prostu wyliczoną datę, nawet jeśli jest "wczoraj" (co sugeruje opóźnienie)
+                next_backup_str = next_dt.strftime("%Y-%m-%d %H:%M")
+            else:
+                # Brak ostatniego backupu -> Następny jest "dziś" o danej godzinie lub "jutro"
+                today_target = datetime.datetime.combine(now.date(), datetime.time(hour, minute))
+                if now < today_target:
+                    next_backup_str = today_target.strftime("%Y-%m-%d %H:%M")
+                else:
+                    next_backup_str = (today_target + datetime.timedelta(days=1)).strftime("%Y-%m-%d %H:%M")
+                    
+        except Exception as e:
+            logger.error(f"Błąd obliczania daty następnego backupu: {e}")
+
     return {
         "last_backup": settings.gdrive_last_backup or "Brak",
         "status": settings.gdrive_status or "Niepołączono",
         "next_backup_time": settings.gdrive_backup_time,
         "next_backup_freq": settings.gdrive_backup_frequency,
+        # ZMIANA: Wysyłamy obliczoną pełną datę
+        "next_backup_full_date": next_backup_str, 
         "connected": connected
     }

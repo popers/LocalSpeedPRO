@@ -48,14 +48,14 @@ def generate_sql_dump(db: Session) -> str:
     
     lines.append("")
     
-    # 2. Results (Zaktualizowano o 'mode')
+    # 2. Results
     results = db.query(SpeedResult).all()
     for res in results:
         # id, date, ping, download, upload, lang, theme, mode
         date_safe = str(res.date).replace("'", "''")
         lang_safe = str(res.lang).replace("'", "''")
         theme_safe = str(res.theme).replace("'", "''")
-        mode_safe = str(res.mode or 'Multi').replace("'", "''") # Default to Multi if null
+        mode_safe = str(res.mode or 'Multi').replace("'", "''")
         
         lines.append(
             f"INSERT INTO results (id, date, ping, download, upload, lang, theme, mode) "
@@ -144,7 +144,8 @@ def perform_backup_logic(db: Session):
 
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         settings.gdrive_last_backup = now_str
-        settings.gdrive_status = "Sukces (Auto)"
+        # ZMIANA: Usunięto dopisek (Auto)
+        settings.gdrive_status = "Sukces"
         db.commit()
         
         logger.info(f"Backup auto-run success: {file_name}")
