@@ -29,7 +29,7 @@
     justify-content: center;
     align-items: center;
     margin-top: -50px; 
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     min-width: 140px; 
     transition: all 0.3s ease;
     z-index: 5; 
@@ -52,18 +52,34 @@
     line-height: 1;
 }
 
+/* --- INFO BADGES (Ping + Threads) --- */
+.info-badges {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    z-index: 10;
+}
+
 /* WYŚWIETLANIE PINGU */
-.ping-display {
+.ping-display, .thread-display {
     background: rgba(128,128,128,0.1);
-    padding: 8px 20px;
+    padding: 6px 16px;
     border-radius: 20px;
     font-weight: 500;
     display: flex;
     align-items: center;
     gap: 8px;
-    z-index: 10;
-    font-size: 1rem;
-    margin-bottom: 10px; 
+    font-size: 0.9rem;
+}
+
+/* Specyficzne dla Threads - nieco mniejsze */
+.thread-display {
+    background: transparent;
+    border: 1px solid var(--border);
+    padding: 4px 12px;
+    font-size: 0.8rem;
 }
 
 /* WSPÓLNE STYLE DLA PRZEŁĄCZNIKÓW */

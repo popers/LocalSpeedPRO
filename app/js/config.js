@@ -19,7 +19,7 @@ export const translations = {
         up: "Wysyłanie", 
         
         table_date: "Data",
-        table_mode: "Tryb", // Nowa kolumna
+        table_mode: "Tryb",
         table_ping: "Ping",
         table_down: "Pobieranie",
         table_up: "Wysyłanie",
@@ -34,6 +34,7 @@ export const translations = {
         msg_deleted: "Usunięto wpisy.",
 
         gauge_title: "PRĘDKOŚĆ",
+        lbl_threads: "Wątki:", // NOWE
         
         mode_single: "Single",
         mode_multi: "Multi",
@@ -123,7 +124,7 @@ export const translations = {
         up: "Upload", 
         
         table_date: "Date",
-        table_mode: "Mode", // Nowa kolumna
+        table_mode: "Mode",
         table_ping: "Ping",
         table_down: "Download",
         table_up: "Upload",
@@ -138,6 +139,7 @@ export const translations = {
         msg_deleted: "Entries deleted.",
 
         gauge_title: "SPEED",
+        lbl_threads: "Threads:", // NOWE
         
         mode_single: "Single",
         mode_multi: "Multi",

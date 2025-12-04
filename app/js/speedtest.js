@@ -4,7 +4,6 @@ import { checkGaugeRange, getGaugeInstance } from '/js/gauge.js';
 import { updateChart } from '/js/charts.js';
 
 // --- LOCAL UTILS ---
-// Definiujemy lokalnie, aby uniknąć problemów z cachem importów
 const isMobileDevice = () => {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
            || (window.innerWidth < 900);
@@ -15,7 +14,6 @@ const workerScript = `
 self.onmessage = function(e) {
     const { command, url, bufferSize, uploadData, baseUrl } = e.data;
     
-    // FIX: Budujemy pełny URL, bo w Blob Workerze relatywne ścieżki mogą nie działać
     let fullUrl = url;
     try {
         if (!url.startsWith('http')) {
@@ -39,7 +37,6 @@ async function runDownload(url) {
 
     while (true) {
         try {
-            // Cache busting
             const fetchUrl = url + (url.includes('?') ? '&' : '?') + 't=' + Math.random();
             const response = await fetch(fetchUrl, { cache: "no-store", keepalive: true });
             if (!response.body) return;
@@ -59,7 +56,7 @@ async function runDownload(url) {
                 }
             }
         } catch (e) {
-            // Retry on error
+            // Retry
         }
     }
 }
@@ -98,7 +95,7 @@ function runUpload(url, dataBlob, bufferSize) {
 }
 `;
 
-// --- ENGINE KLASA (ZARZĄDZANIE WĄTKAMI) ---
+// --- ENGINE KLASA (SMART SCALING) ---
 
 class SpeedTestEngine {
     constructor(type, maxThreads) {
@@ -111,8 +108,14 @@ class SpeedTestEngine {
         this.timer = null;
         this.rampUpTimer = null;
         
+        // Zmienne do Smart Scaling
+        this.currentSpeed = 0; 
+        this.prevSpeed = 0;
+
         this.startThreads = 2; 
-        this.rampUpIncrement = isMobileDevice() ? 1 : 2; 
+        
+        // ZMIANA: Mobile +1 (stabilność), Desktop +4 (szybkość)
+        this.rampUpIncrement = isMobileDevice() ? 1 : 4; 
         
         if (this.maxThreads === 1) {
             this.startThreads = 1;
@@ -129,11 +132,7 @@ class SpeedTestEngine {
         const id = this.activeWorkers.length;
         const worker = new Worker(this.blobUrl);
         
-        // Obsługa błędów workera
-        worker.onerror = (err) => {
-            console.error(`Worker ${id} error:`, err.message, err);
-        };
-        
+        worker.onerror = (err) => console.error(`Worker ${id} error:`, err);
         worker.onmessage = (e) => {
             if (e.data.type === 'progress') {
                 this.workerResults.set(id, e.data.bytes);
@@ -145,39 +144,59 @@ class SpeedTestEngine {
             url: this.type === 'download' ? '/static/100MB.bin' : '/api/upload',
             bufferSize: isMobileDevice() ? 1024 * 1024 : 8 * 1024 * 1024,
             uploadData: null,
-            baseUrl: window.location.origin // FIX: Przekazujemy origin strony
+            baseUrl: window.location.origin 
         };
         
         worker.postMessage(config);
         this.activeWorkers.push(worker);
         this.workerResults.set(id, 0);
         
-        // ZMIANA: Odkomentowano i sformatowano logowanie dodawania wątków
         console.log(`%c[Engine] 🚀 Worker ${id+1} added. Total: ${this.activeWorkers.length}`, 'color: #00e676; font-weight: bold;');
     }
 
     start(onUpdate, onFinish) {
         this.startTime = performance.now();
-        
-        // Log startowy
-        console.log(`%c[Engine] Starting ${this.type} test (Max Threads: ${this.maxThreads})`, 'color: #2979ff; font-weight: bold;');
+        console.log(`%c[Engine] Starting ${this.type} test (Max Threads: ${this.maxThreads}, Increment: +${this.rampUpIncrement})`, 'color: #2979ff; font-weight: bold;');
 
+        // Reset UI dla wątków
+        if(el('thread-badge')) el('thread-badge').style.opacity = '1';
+
+        // 1. Start początkowy
         for (let i = 0; i < this.startThreads; i++) {
             this.addWorker();
         }
 
+        // 2. Smart Ramp-up Loop
         if (this.rampUpIncrement > 0) {
             this.rampUpTimer = setInterval(() => {
-                if (this.activeWorkers.length < this.maxThreads) {
-                    for(let k=0; k<this.rampUpIncrement; k++) {
-                        this.addWorker();
-                    }
-                } else {
+                if (this.activeWorkers.length >= this.maxThreads) {
                     clearInterval(this.rampUpTimer);
+                    return;
                 }
-            }, 1000);
+
+                // SMART CHECK - Złagodzony próg nasycenia
+                if (this.activeWorkers.length > this.startThreads && this.prevSpeed > 0) {
+                    const growth = (this.currentSpeed - this.prevSpeed) / this.prevSpeed;
+                    console.log(`[Engine] 📊 Speed Growth: ${(growth * 100).toFixed(1)}% (Active Threads: ${this.activeWorkers.length})`);
+
+                    // Próg nasycenia 1% - pozwala na delikatne wzrosty
+                    if (growth < 0.01) { 
+                        console.log(`%c[Engine] 🛑 Saturation detected (Plateau). Stopping ramp-up.`, 'color: orange; font-weight: bold;');
+                        clearInterval(this.rampUpTimer);
+                        return;
+                    }
+                }
+
+                this.prevSpeed = this.currentSpeed;
+
+                for(let k=0; k<this.rampUpIncrement; k++) {
+                    this.addWorker();
+                }
+
+            }, 1200); 
         }
 
+        // 3. Główna pętla UI
         this.timer = setInterval(() => {
             const now = performance.now();
             const duration = (now - this.startTime) / 1000;
@@ -188,11 +207,7 @@ class SpeedTestEngine {
             }
 
             let speed = (duration > 0.2) ? (totalBytes * 8) / duration / 1e6 : 0;
-            
-            // ZMIANA: Opcjonalne logowanie statusu co 1 sekundę w konsoli (żeby nie spamować)
-            if (Math.floor(duration * 10) % 10 === 0) {
-                 // console.debug(`[Status] ${speed.toFixed(2)} Mbps | Threads: ${this.activeWorkers.length}`);
-            }
+            this.currentSpeed = speed;
 
             onUpdate(speed, duration, this.activeWorkers.length);
 
@@ -209,6 +224,9 @@ class SpeedTestEngine {
         
         console.log(`%c[Engine] Test finished. Final Threads: ${this.activeWorkers.length}`, 'color: #ff1744; font-weight: bold;');
 
+        // Dim UI badge
+        if(el('thread-badge')) el('thread-badge').style.opacity = '0.5';
+
         this.activeWorkers.forEach(w => w.terminate());
         this.activeWorkers = [];
         
@@ -216,7 +234,7 @@ class SpeedTestEngine {
     }
 }
 
-// --- FUNKCJE TESTOWE (PUBLIC API) ---
+// --- PUBLIC API ---
 
 export async function runPing() {
     const start = performance.now();
@@ -232,8 +250,8 @@ export async function runPing() {
 export function runDownload() {
     return new Promise((resolve) => {
         let maxT = (THREADS === 1) ? 1 : THREADS;
-        
         if (THREADS > 1 && isMobileDevice()) {
+            // ZMIANA: Limit Download na Mobile zmniejszony do 4 dla stabilności
             maxT = Math.min(maxT, 4); 
         }
 
@@ -244,6 +262,9 @@ export function runDownload() {
             (speed, duration, activeThreads) => {
                 checkGaugeRange(speed); 
                 
+                // Aktualizacja UI wątków
+                if(el('thread-count')) el('thread-count').innerText = activeThreads;
+
                 let displaySpeed = (currentUnit === 'mbs') ? speed / 8 : speed;
                 if (currentGauge) currentGauge.value = displaySpeed; 
                 el('speed-value').innerText = displaySpeed.toFixed(2); 
@@ -262,6 +283,7 @@ export function runUpload() {
     return new Promise((resolve) => {
         let maxT = (THREADS === 1) ? 1 : THREADS;
         if (THREADS > 1 && isMobileDevice()) {
+            // ZMIANA: Limit Upload na Mobile zmniejszony do 4 dla stabilności
             maxT = Math.min(maxT, 4);
         }
 
@@ -272,6 +294,9 @@ export function runUpload() {
             (speed, duration, activeThreads) => {
                 checkGaugeRange(speed); 
                 
+                // Aktualizacja UI wątków
+                if(el('thread-count')) el('thread-count').innerText = activeThreads;
+
                 let displaySpeed = (currentUnit === 'mbs') ? speed / 8 : speed;
                 if (currentGauge) currentGauge.value = displaySpeed; 
                 el('speed-value').innerText = displaySpeed.toFixed(2); 
