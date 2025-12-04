@@ -34,7 +34,7 @@ export const translations = {
         msg_deleted: "Usunięto wpisy.",
 
         gauge_title: "PRĘDKOŚĆ",
-        lbl_threads: "Wątki:", // NOWE
+        lbl_threads: "Wątki:", 
         
         mode_single: "Single",
         mode_multi: "Multi",
@@ -97,7 +97,9 @@ export const translations = {
         lbl_last_backup: "Ostatni backup:",
         lbl_next_backup: "Następny backup:",
         status_connected: "Status: Połączono",
-        status_disconnected: "Status: Niepołączono",
+        status_disconnected: "Status: Nie połączono", // Poprawiony błąd
+        status_success: "Sukces", 
+        lbl_status_prefix: "Status: ", 
         gdrive_help_1: "Wejdź na Google Cloud Console i utwórz nowy projekt.",
         gdrive_help_2: "Włącz API \"Google Drive API\" w bibliotece.",
         gdrive_help_3: "W \"Credentials\" utwórz \"OAuth Client ID\" (Typ: Web application).",
@@ -139,7 +141,7 @@ export const translations = {
         msg_deleted: "Entries deleted.",
 
         gauge_title: "SPEED",
-        lbl_threads: "Threads:", // NOWE
+        lbl_threads: "Threads:", 
         
         mode_single: "Single",
         mode_multi: "Multi",
@@ -203,6 +205,8 @@ export const translations = {
         lbl_next_backup: "Next backup:",
         status_connected: "Status: Connected",
         status_disconnected: "Status: Disconnected",
+        status_success: "Success", 
+        lbl_status_prefix: "Status: ", 
         gdrive_help_1: "Go to Google Cloud Console and create a new project.",
         gdrive_help_2: "Enable 'Google Drive API' in the library.",
         gdrive_help_3: "In 'Credentials', create an 'OAuth Client ID' (Type: Web application).",

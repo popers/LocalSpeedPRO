@@ -114,7 +114,7 @@ class SpeedTestEngine {
 
         this.startThreads = 2; 
         
-        // ZMIANA: Mobile +1 (stabilność), Desktop +4 (szybkość)
+        // ZMIANA: Mobile +1, Desktop +4
         this.rampUpIncrement = isMobileDevice() ? 1 : 4; 
         
         if (this.maxThreads === 1) {
@@ -168,6 +168,7 @@ class SpeedTestEngine {
 
         // 2. Smart Ramp-up Loop
         if (this.rampUpIncrement > 0) {
+            // ZMIANA: Interwał zwiększony do 2000ms (2s)
             this.rampUpTimer = setInterval(() => {
                 if (this.activeWorkers.length >= this.maxThreads) {
                     clearInterval(this.rampUpTimer);
@@ -179,9 +180,9 @@ class SpeedTestEngine {
                     const growth = (this.currentSpeed - this.prevSpeed) / this.prevSpeed;
                     console.log(`[Engine] 📊 Speed Growth: ${(growth * 100).toFixed(1)}% (Active Threads: ${this.activeWorkers.length})`);
 
-                    // Próg nasycenia 1% - pozwala na delikatne wzrosty
-                    if (growth < 0.01) { 
-                        console.log(`%c[Engine] 🛑 Saturation detected (Plateau). Stopping ramp-up.`, 'color: orange; font-weight: bold;');
+                    // ZMIANA: Próg nasycenia 5% (0.05) - kompromis
+                    if (growth < 0.05) { 
+                        console.log(`%c[Engine] 🛑 Saturation detected (Low gain < 5%). Stopping ramp-up.`, 'color: orange; font-weight: bold;');
                         clearInterval(this.rampUpTimer);
                         return;
                     }
@@ -193,7 +194,7 @@ class SpeedTestEngine {
                     this.addWorker();
                 }
 
-            }, 1200); 
+            }, 2000); // 2 sekundy na ustabilizowanie
         }
 
         // 3. Główna pętla UI
@@ -251,8 +252,8 @@ export function runDownload() {
     return new Promise((resolve) => {
         let maxT = (THREADS === 1) ? 1 : THREADS;
         if (THREADS > 1 && isMobileDevice()) {
-            // ZMIANA: Limit Download na Mobile zmniejszony do 4 dla stabilności
-            maxT = Math.min(maxT, 4); 
+            // ZMIANA: Limit Download na Mobile ustawiony na 6
+            maxT = Math.min(maxT, 6); 
         }
 
         const engine = new SpeedTestEngine('download', maxT);
@@ -283,8 +284,8 @@ export function runUpload() {
     return new Promise((resolve) => {
         let maxT = (THREADS === 1) ? 1 : THREADS;
         if (THREADS > 1 && isMobileDevice()) {
-            // ZMIANA: Limit Upload na Mobile zmniejszony do 4 dla stabilności
-            maxT = Math.min(maxT, 4);
+            // ZMIANA: Limit Upload na Mobile ustawiony na 6
+            maxT = Math.min(maxT, 6);
         }
 
         const engine = new SpeedTestEngine('upload', maxT);

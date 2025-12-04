@@ -107,28 +107,32 @@
             <div class="dashboard-container">
                 <div class="gauge-section">
                     <canvas id="speed-gauge"></canvas>
+                    
+                    <!-- 1. Ping nad licznikiem -->
+                    <div class="ping-display">
+                        <span class="material-icons">network_check</span>
+                        <span id="ping-text">--</span> ms
+                    </div>
+
+                    <!-- 2. Licznik -->
                     <div class="digital-box">
                         <span id="speed-value">0.00</span>
                     </div>
                     
-                    <div class="info-badges">
-                        <div class="ping-display">
-                            <span class="material-icons">network_check</span>
-                            <span id="ping-text">--</span> ms
-                        </div>
-                        <!-- ZMIANA: Dodano data-key dla tłumaczenia -->
+                    <!-- 3. Rząd sterowania (Multi | Threads | Mbps) -->
+                    <div class="controls-row">
+                        <button id="mode-toggle" class="mode-switch" title="Zmień tryb połączenia">
+                            <span class="material-icons">hub</span>
+                            <span id="mode-text" data-key="mode_multi">Multi</span>
+                        </button>
+
                         <div class="thread-display" id="thread-badge" style="opacity: 0.5;">
                             <span class="material-icons">memory</span>
                             <span data-key="lbl_threads">Threads:</span> <span id="thread-count">0</span>
                         </div>
-                    </div>
-                    
-                    <button id="mode-toggle" class="mode-switch" title="Zmień tryb połączenia">
-                        <span class="material-icons">hub</span>
-                        <span id="mode-text" data-key="mode_multi">Multi</span>
-                    </button>
 
-                    <button id="unit-toggle" class="unit-switch" title="Przełącz jednostkę">Mbps</button>
+                        <button id="unit-toggle" class="unit-switch" title="Przełącz jednostkę">Mbps</button>
+                    </div>
                 </div>
 
                 <div class="stats-section">

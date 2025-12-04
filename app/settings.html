@@ -205,18 +205,26 @@
                                     <!-- USUNIĘTO data-key z rodzica, aby updateTexts nie nadpisywał całości -->
                                     <span id="gdrive-status-text">
                                         <span class="material-icons link-icon">link_off</span>
-                                        <span data-key="status_disconnected">Status: Niepołączono</span>
+                                        <span data-key="status_disconnected">Status: Nie połączono</span>
                                     </span>
                                 </div>
 
                                 <div class="backup-info-grid">
                                     <div>
                                         <small data-key="lbl_last_backup">Ostatni backup:</small> 
-                                        <span id="last-backup-date">--</span> | <span id="last-backup-status">--</span>
+                                        <!-- Przeniesienie Sukces/Status niżej -->
+                                        <div class="backup-date-row">
+                                            <span id="last-backup-date">--</span>
+                                        </div>
+                                        <div class="backup-status-row">
+                                            <span id="last-backup-status">--</span>
+                                        </div>
                                     </div>
                                     <div id="next-backup-info" style="display:none;">
                                         <small data-key="lbl_next_backup">Następny backup:</small> 
-                                        <span id="next-backup-text">--</span>
+                                        <div style="margin-top: 2px;">
+                                            <span id="next-backup-text">--</span>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -414,7 +422,11 @@
                 if(el('gd-retention')) el('gd-retention').value = data.gdrive_retention_days || 7;
 
                 if(data.lang && lang !== data.lang) { setLang(data.lang); localStorage.setItem('ls_lang', data.lang); }
-                if(data.theme) { document.body.setAttribute('data-theme', data.theme); localStorage.setItem('ls_theme', data.theme); }
+                
+                if(data.theme) { 
+                    document.documentElement.setAttribute('data-theme', data.theme); 
+                    localStorage.setItem('ls_theme', data.theme); 
+                }
                 
                 const incomingColor = data.primary_color;
                 if (incomingColor && incomingColor !== 'null') {
@@ -424,7 +436,7 @@
                     if(el('color-hex')) el('color-hex').value = incomingColor;
                 }
 
-                updateThemeIcon(document.body.getAttribute('data-theme'));
+                updateThemeIcon(document.documentElement.getAttribute('data-theme'));
                 updateTexts();
                 fetchBackupStatus();
 
@@ -448,19 +460,39 @@
             try {
                 const res = await fetch('/api/backup/status');
                 const stat = await res.json();
+                
+                // Tłumaczenie statusu "Sukces"
+                let statusMsg = stat.status;
+                const t = translations[lang]; 
+                
+                // Poprawka literówki z backendu
+                if (statusMsg === "Niepołączono") statusMsg = t.status_disconnected || "Nie połączono";
+                
+                // Lista statusów do ukrycia pod datą ostatniego backupu
+                const ignoredStatuses = ["Niepołączono", "Nie połączono", "Połączono pomyślnie", "Połączono", "Connected", "Disconnected"];
+                let isConnectionStatus = ignoredStatuses.includes(stat.status) || ignoredStatuses.includes(statusMsg);
+                
                 if(stat.last_backup) el('last-backup-date').innerText = stat.last_backup;
-                if(stat.status) el('last-backup-status').innerText = stat.status;
+                
+                if (isConnectionStatus) {
+                     el('last-backup-status').innerText = "";
+                } else {
+                     if (stat.status === "Sukces" || stat.status === "Success") {
+                        statusMsg = t.status_success || "Sukces";
+                        const statusPrefix = t.lbl_status_prefix || "Status: ";
+                        el('last-backup-status').innerText = statusPrefix + statusMsg;
+                        el('last-backup-status').style.color = "var(--primary)";
+                     } else {
+                        el('last-backup-status').innerText = statusMsg;
+                        el('last-backup-status').style.color = "inherit"; 
+                     }
+                }
                 
                 const nextInfoDiv = el('next-backup-info');
-                // ZMIANA: Sprawdzamy czy backend zwrócił pełną datę
                 const nextDateToShow = stat.next_backup_full_date || stat.next_backup_time;
 
                 if(stat.connected && nextDateToShow) {
-                    const daysStr = formatDays(stat.next_backup_freq);
-                    const t = translations[lang];
-                    const every = t.txt_every || "co"; 
-                    const formattedStr = `${nextDateToShow} (${every} ${daysStr})`;
-                    el('next-backup-text').innerText = formattedStr;
+                    el('next-backup-text').innerText = nextDateToShow;
                     nextInfoDiv.style.display = 'block';
                 } else {
                     nextInfoDiv.style.display = 'none';
@@ -468,7 +500,6 @@
                 
                 const statusText = el('gdrive-status-text');
                 const btnConnect = el('connect-gdrive-btn');
-                const t = translations[lang];
 
                 if(stat.connected) {
                     statusText.style.color = "var(--primary)";
@@ -481,7 +512,7 @@
                     
                 } else {
                     statusText.style.color = "#ff5252";
-                    statusText.innerHTML = `<span class="material-icons link-icon">link_off</span> <span data-key="status_disconnected">${t.status_disconnected || "Niepołączono"}</span>`;
+                    statusText.innerHTML = `<span class="material-icons link-icon">link_off</span> <span data-key="status_disconnected">${t.status_disconnected || "Nie połączono"}</span>`;
                     
                     btnConnect.setAttribute('data-action', 'connect');
                     btnConnect.classList.remove('btn-danger-fill');
@@ -631,6 +662,7 @@
                 el('trigger-backup-btn').disabled = false;
             };
 
+            // ZMIANA: FIX motywu w settings
             el('lang-toggle').onclick = () => { 
                 const n = lang === 'pl' ? 'en' : 'pl'; 
                 setLang(n); 
@@ -639,7 +671,15 @@
                 .then(() => fetchBackupStatus()); 
             };
             
-            el('theme-toggle').onclick = () => { const n = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; document.body.setAttribute('data-theme', n); updateThemeIcon(n); fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ theme: n }) }); };
+            el('theme-toggle').onclick = () => { 
+                const current = document.documentElement.getAttribute('data-theme');
+                const n = current === 'dark' ? 'light' : 'dark'; 
+                document.documentElement.setAttribute('data-theme', n); 
+                localStorage.setItem('ls_theme', n);
+                updateThemeIcon(n); 
+                fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ theme: n }) }); 
+            };
+            
             if(el('reset-color-btn')) el('reset-color-btn').onclick = () => { applyPrimaryColor(null); setPrimaryColor(null); localStorage.removeItem('ls_primary_color'); picker.value = '#6200ea'; el('color-hex').value='#6200ea'; fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ primary_color: null }) }); };
         };
     </script>

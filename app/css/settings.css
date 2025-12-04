@@ -251,6 +251,21 @@
     border-radius: 8px;
 }
 
+/* ZMIANA: Dodano nowrap, aby data nie była łamana */
+.backup-info-grid > div {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Nowe style dla wierszy daty i statusu */
+.backup-date-row {
+    margin-top: 2px;
+}
+.backup-status-row {
+    margin-top: 2px;
+}
+
 .help-details { margin-top: 2rem; font-size: 0.85rem; opacity: 0.8; }
 .help-details summary { cursor: pointer; margin-bottom: 5px; }
 .help-details ol { padding-left: 20px; margin: 0; }
@@ -273,6 +288,46 @@ input:checked + .slider:before { transform: translateX(24px); }
 
 @media (max-width: 700px) {
     .backup-manual-grid { grid-template-columns: 1fr; }
+    
+    /* ZMIANA: Usunięcie nadpisywania grid-template-columns */
+    /* Dzięki temu zostanie 1fr 1fr (dwie kolumny obok siebie) także na mobile */
+    /* Ewentualnie zmniejszamy font, jeśli brakuje miejsca */
+    .backup-info-grid {
+        gap: 5px;
+    }
+    
+    .backup-info-grid > div {
+        font-size: 0.75rem; /* Mniejszy font na telefonie */
+    }
+    
     .gdrive-actions-row { flex-direction: column; align-items: stretch; }
     .right-actions { margin-left: 0; text-align: right; }
+
+    /* Custom Summary Arrow for Mobile */
+    .help-details summary {
+        list-style: none; /* Hide default marker */
+        position: relative;
+        padding-left: 20px; /* Space for arrow */
+    }
+    .help-details summary::-webkit-details-marker {
+        display: none;
+    }
+    .help-details summary::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 5px;
+        border: 5px solid transparent;
+        border-left-color: var(--text); /* Arrow pointing right */
+        transform-origin: center;
+        transition: transform 0.2s;
+    }
+    .help-details[open] summary::before {
+        transform: rotate(90deg); /* Arrow pointing down */
+    }
+
+    /* ZMIANA: Ograniczenie szerokości pola czasu na mobile */
+    #gd-time {
+        max-width: 150px;
+    }
 }
