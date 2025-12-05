@@ -318,12 +318,43 @@ class SpeedTestEngine {
             this.lastTime = now;
             this.lastTotalBytes = totalBytes;
 
+            // --- UI SMOOTHING LOGIC ---
+            
             if (this.uiSpeed === 0) this.uiSpeed = avgSpeed;
-            if (avgSpeed < this.uiSpeed * 0.7 && this.uiSpeed > 10) avgSpeed = this.uiSpeed; 
-            const uiAlpha = (avgSpeed > this.uiSpeed) ? 0.2 : 0.05;
+
+            // 1. ZABEZPIECZENIE: Faza Scaling (dodawanie workerów)
+            // Jeśli jesteśmy w fazie rozpędzania, zabraniamy spadków UI.
+            // Spadki w tej fazie są zazwyczaj techniczne (CPU/Network lag przy nowym połączeniu).
+            if (this.status === 'scaling' && avgSpeed < this.uiSpeed) {
+                avgSpeed = this.uiSpeed; 
+            }
+
+            // 2. ZABEZPIECZENIE: "Czkawka" (Hiccup)
+            // Jeśli chwilowa prędkość (instant) jest bliska zeru, ale średnia jest wysoka,
+            // to znaczy, że mamy pauzę w danych (np. zmiana bufora). Ignorujemy to w UI.
+            if (this.currentInstantSpeed < this.uiSpeed * 0.1 && this.uiSpeed > 5) {
+                avgSpeed = this.uiSpeed;
+            }
+
+            // 3. Obliczanie Alpha (Bezwładność)
+            // Upload ma mniejszy riseFactor, żeby nie skakał w górę zbyt gwałtownie.
+            // Upload ma też BARDZO MAŁY fallFactor, żeby "sklejać" przerwy między paczkami.
+            let riseFactor = (this.type === 'upload') ? 0.1 : 0.2; 
+            let fallFactor = (this.type === 'upload') ? 0.01 : 0.05; // 0.01 = Bardzo powolne opadanie
+
+            const uiAlpha = (avgSpeed > this.uiSpeed) ? riseFactor : fallFactor;
             this.uiSpeed = (avgSpeed * uiAlpha) + (this.uiSpeed * (1 - uiAlpha));
 
-            if (this.uiSpeed < this.prevUiSpeed * 0.98) this.uiSpeed = this.prevUiSpeed * 0.98;
+            // 4. TWARDA BLOKADA OPADANIA (Needle Gravity)
+            // Zmieniono z 0.98 na 0.995 (dla uploadu nawet 0.999).
+            // To zapobiega spadkowi o więcej niż 0.5% (dla download) lub 0.1% (dla upload) na cykl (100ms).
+            // W efekcie wskazówka może opaść max ~1-5% na sekundę.
+            let dropLimit = (this.type === 'upload') ? 0.999 : 0.995;
+            
+            if (this.uiSpeed < this.prevUiSpeed * dropLimit) {
+                this.uiSpeed = this.prevUiSpeed * dropLimit;
+            }
+
             this.prevUiSpeed = this.uiSpeed;
 
             onUpdate(this.uiSpeed, duration, this.activeWorkers.length);
