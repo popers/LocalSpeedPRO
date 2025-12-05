@@ -109,7 +109,7 @@ export const translations = {
         txt_day: "dzień",
 
         // --- LOGIN PAGE ---
-        login_header: "LocalSpeed PRO",
+        login_header: "LocalSpeedPRO",
         login_user: "Użytkownik",
         login_pass: "Hasło",
         login_btn: "Zaloguj się",
@@ -216,7 +216,7 @@ export const translations = {
         txt_day: "day",
 
         // --- LOGIN PAGE ---
-        login_header: "LocalSpeed PRO",
+        login_header: "LocalSpeedPRO",
         login_user: "Username",
         login_pass: "Password",
         login_btn: "Log in",
