@@ -12,7 +12,7 @@ const isMobileDevice = () => {
 // --- WORKER CODE (INLINE BLOB) ---
 const workerScript = `
 self.onmessage = function(e) {
-    const { command, url, maxBufferSize, minBufferSize, baseUrl } = e.data;
+    const { command, url, maxBufferSize, minBufferSize, bufferSize, uploadData, baseUrl } = e.data;
     
     let fullUrl = url;
     try {
@@ -24,8 +24,10 @@ self.onmessage = function(e) {
     }
 
     if (command === 'download') {
+        // Download korzysta ze streamingu, który jest z natury dynamiczny
         runDownload(fullUrl);
     } else if (command === 'upload') {
+        // Upload korzysta z algorytmu Dynamic Chunk Sizing
         runUpload(fullUrl, maxBufferSize, minBufferSize);
     }
 };
@@ -69,7 +71,9 @@ function runUpload(url, maxBufferSize, minBufferSize) {
     // To oszczędza Garbage Collector i procesor.
     const masterBuffer = new Uint8Array(maxBufferSize); 
     
+    // Zaczynamy od najmniejszej paczki
     let currentSize = minBufferSize;
+    
     let startTime = performance.now();
     let lastReport = startTime;
 
@@ -78,7 +82,7 @@ function runUpload(url, maxBufferSize, minBufferSize) {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', url + (url.includes('?') ? '&' : '?') + 't=' + Math.random(), true);
         
-        // Tworzymy widok (slice) z głównego bufora - to jest bardzo szybkie
+        // Tworzymy widok (slice) z głównego bufora - to jest bardzo szybkie i nie kopiuje pamięci
         const chunk = masterBuffer.subarray(0, currentSize);
         const blob = new Blob([chunk]);
 
@@ -102,14 +106,14 @@ function runUpload(url, maxBufferSize, minBufferSize) {
             const duration = reqEnd - reqStart; // Czas wysyłania jednej paczki (ms)
 
             // --- DYNAMIC CHUNK SIZING (Ookla Algorithm) ---
-            // Cel: Paczka powinna lecieć min. 50ms-100ms.
-            // Jeśli leci za szybko (< 50ms), podwajamy rozmiar dla następnego strzału.
+            // Jeśli paczka poleciała bardzo szybko (< 50ms), zwiększamy jej rozmiar,
+            // żeby nie tracić czasu na narzut HTTP/TCP przy kolejnym strzale.
             
             if (duration < 50) {
                 currentSize *= 2;
             } 
             
-            // Clamp (Trzymaj rozmiar w ryzach)
+            // Pilnujemy limitów
             if (currentSize > maxBufferSize) currentSize = maxBufferSize;
             if (currentSize < minBufferSize) currentSize = minBufferSize;
 
@@ -214,16 +218,16 @@ class SpeedTestEngine {
             }
         };
 
-        // --- KONFIGURACJA DYNAMICZNEGO BUFORA ---
-        // Startujemy od małych porcji, żeby wykres ruszył natychmiast.
-        // Skalujemy do góry w zależności od mocy urządzenia.
+        // --- KONFIGURACJA DYNAMICZNEGO BUFORA (DCS) ---
+        // Startujemy od małych porcji dla natychmiastowej reakcji.
+        // Skalujemy do góry w zależności od mocy urządzenia i łącza.
         
-        let minBuf = 512 * 1024; // 512 KB start
+        let minBuf = 512 * 1024; // 512 KB start (Desktop)
         let maxBuf = 32 * 1024 * 1024; // 32 MB max (Desktop)
 
         if (isMobileDevice()) {
-            minBuf = 256 * 1024; // 256 KB start (Mobile)
-            maxBuf = 4 * 1024 * 1024; // 4 MB max (Mobile - bezpiecznik)
+            minBuf = 256 * 1024; // 256 KB start (Mobile - super responsywne)
+            maxBuf = 4 * 1024 * 1024; // 4 MB max (Mobile - bezpiecznik CPU)
         }
 
         const config = {
@@ -343,6 +347,7 @@ class SpeedTestEngine {
         }
 
         const growth = (this.currentInstantSpeed - this.prevSpeed) / this.prevSpeed;
+        
         const dropThreshold = (this.type === 'upload') ? -0.30 : -0.20;
 
         if (growth > this.minGrowth) {
