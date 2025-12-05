@@ -12,7 +12,7 @@ const isMobileDevice = () => {
 // --- WORKER CODE (INLINE BLOB) ---
 const workerScript = `
 self.onmessage = function(e) {
-    const { command, url, bufferSize, uploadData, baseUrl } = e.data;
+    const { command, url, maxBufferSize, minBufferSize, baseUrl } = e.data;
     
     let fullUrl = url;
     try {
@@ -26,7 +26,7 @@ self.onmessage = function(e) {
     if (command === 'download') {
         runDownload(fullUrl);
     } else if (command === 'upload') {
-        runUpload(fullUrl, uploadData, bufferSize);
+        runUpload(fullUrl, maxBufferSize, minBufferSize);
     }
 };
 
@@ -61,16 +61,27 @@ async function runDownload(url) {
     }
 }
 
-function runUpload(url, dataBlob, bufferSize) {
+function runUpload(url, maxBufferSize, minBufferSize) {
     let totalBytes = 0;
-    const blob = dataBlob || new Blob([new Uint8Array(bufferSize)]); 
+    
+    // OPTYMALIZACJA PAMIĘCI:
+    // Alokujemy jeden duży bufor (Max) raz, a potem tylko go "kroimy" (subarray).
+    // To oszczędza Garbage Collector i procesor.
+    const masterBuffer = new Uint8Array(maxBufferSize); 
+    
+    let currentSize = minBufferSize;
     let startTime = performance.now();
     let lastReport = startTime;
 
     const loop = () => {
+        const reqStart = performance.now();
         const xhr = new XMLHttpRequest();
         xhr.open('POST', url + (url.includes('?') ? '&' : '?') + 't=' + Math.random(), true);
         
+        // Tworzymy widok (slice) z głównego bufora - to jest bardzo szybkie
+        const chunk = masterBuffer.subarray(0, currentSize);
+        const blob = new Blob([chunk]);
+
         let lastLoaded = 0;
         xhr.upload.onprogress = (e) => {
             const diff = e.loaded - lastLoaded;
@@ -86,7 +97,26 @@ function runUpload(url, dataBlob, bufferSize) {
             }
         };
 
-        xhr.onload = loop; 
+        xhr.onload = () => {
+            const reqEnd = performance.now();
+            const duration = reqEnd - reqStart; // Czas wysyłania jednej paczki (ms)
+
+            // --- DYNAMIC CHUNK SIZING (Ookla Algorithm) ---
+            // Cel: Paczka powinna lecieć min. 50ms-100ms.
+            // Jeśli leci za szybko (< 50ms), podwajamy rozmiar dla następnego strzału.
+            
+            if (duration < 50) {
+                currentSize *= 2;
+            } 
+            
+            // Clamp (Trzymaj rozmiar w ryzach)
+            if (currentSize > maxBufferSize) currentSize = maxBufferSize;
+            if (currentSize < minBufferSize) currentSize = minBufferSize;
+
+            // Pętla
+            loop();
+        };
+
         xhr.onerror = loop; 
         xhr.send(blob);
     };
@@ -95,7 +125,38 @@ function runUpload(url, dataBlob, bufferSize) {
 }
 `;
 
-// --- ENGINE KLASA (SMART SCALING) ---
+// --- PHASE 1: PRE-TEST (LATENCY & JITTER) ---
+
+export async function runPing() {
+    const PING_COUNT = 10;
+    const pings = [];
+    
+    console.log(`[Phase 1] Starting Pre-Test: ${PING_COUNT} pings...`);
+
+    for(let i=0; i<PING_COUNT; i++) {
+        const start = performance.now();
+        try {
+            await fetch(`/api/ping?t=${Date.now()}`, { cache: "no-store" });
+            const duration = performance.now() - start;
+            pings.push(duration);
+            await new Promise(r => setTimeout(r, 10));
+        } catch(e) {
+            console.warn("Ping failed", e);
+        }
+    }
+
+    if (pings.length === 0) return 0;
+
+    const minPing = Math.min(...pings);
+    const avgPing = pings.reduce((a,b) => a+b, 0) / pings.length;
+    const jitter = pings.reduce((a, val) => a + Math.abs(val - avgPing), 0) / pings.length;
+
+    console.log(`[Phase 1] Result: Min: ${minPing.toFixed(2)}ms, Avg: ${avgPing.toFixed(2)}ms, Jitter: ${jitter.toFixed(2)}ms`);
+    return minPing;
+}
+
+
+// --- PHASE 2, 3, 4: DOWNLOAD/UPLOAD ENGINE ---
 
 class SpeedTestEngine {
     constructor(type, maxThreads) {
@@ -105,21 +166,31 @@ class SpeedTestEngine {
         this.workerResults = new Map();
         this.startTime = null;
         this.blobUrl = null;
-        this.timer = null;
-        this.rampUpTimer = null;
         
-        // Zmienne do Smart Scaling
-        this.currentSpeed = 0; 
+        this.maxTotalBytesSeen = 0; 
+
+        // Zmienne do Wygładzania UI
+        this.uiSpeed = 0;
+        this.prevUiSpeed = 0;
+
+        this.timer = null;
+        this.processTimer = null;
+        
+        this.status = 'warmup'; 
         this.prevSpeed = 0;
+        this.stableCount = 0; 
+
+        this.lastTotalBytes = 0;
+        this.lastTime = 0;
+        this.currentInstantSpeed = 0;
 
         this.startThreads = 2; 
-        
-        // ZMIANA: Mobile +1, Desktop +4
-        this.rampUpIncrement = isMobileDevice() ? 1 : 4; 
+        this.monitorInterval = 400; 
+        this.minGrowth = 0.02; 
         
         if (this.maxThreads === 1) {
             this.startThreads = 1;
-            this.rampUpIncrement = 0;
+            this.status = 'sustain'; 
         }
 
         const blob = new Blob([workerScript], { type: "application/javascript" });
@@ -129,132 +200,201 @@ class SpeedTestEngine {
     addWorker() {
         if (this.activeWorkers.length >= this.maxThreads) return;
 
-        const id = this.activeWorkers.length;
+        const id = this.workerResults.size; 
+
         const worker = new Worker(this.blobUrl);
         
         worker.onerror = (err) => console.error(`Worker ${id} error:`, err);
         worker.onmessage = (e) => {
             if (e.data.type === 'progress') {
-                this.workerResults.set(id, e.data.bytes);
+                const current = this.workerResults.get(id) || 0;
+                if (e.data.bytes > current) {
+                    this.workerResults.set(id, e.data.bytes);
+                }
             }
         };
+
+        // --- KONFIGURACJA DYNAMICZNEGO BUFORA ---
+        // Startujemy od małych porcji, żeby wykres ruszył natychmiast.
+        // Skalujemy do góry w zależności od mocy urządzenia.
+        
+        let minBuf = 512 * 1024; // 512 KB start
+        let maxBuf = 32 * 1024 * 1024; // 32 MB max (Desktop)
+
+        if (isMobileDevice()) {
+            minBuf = 256 * 1024; // 256 KB start (Mobile)
+            maxBuf = 4 * 1024 * 1024; // 4 MB max (Mobile - bezpiecznik)
+        }
 
         const config = {
             command: this.type,
             url: this.type === 'download' ? '/static/100MB.bin' : '/api/upload',
-            bufferSize: isMobileDevice() ? 1024 * 1024 : 8 * 1024 * 1024,
+            minBufferSize: minBuf,
+            maxBufferSize: maxBuf,
             uploadData: null,
             baseUrl: window.location.origin 
         };
         
         worker.postMessage(config);
-        this.activeWorkers.push(worker);
-        this.workerResults.set(id, 0);
+        this.activeWorkers.push({ worker, id });
         
-        console.log(`%c[Engine] 🚀 Worker ${id+1} added. Total: ${this.activeWorkers.length}`, 'color: #00e676; font-weight: bold;');
+        if (!this.workerResults.has(id)) {
+            this.workerResults.set(id, 0);
+        }
+        
+        console.log(`%c[Engine] 🚀 Worker added (ID: ${id}). Dynamic Buffer: ${minBuf/1024}KB -> ${maxBuf/1024/1024}MB`, 'color: #00e676;');
+    }
+
+    removeLastWorker() {
+        if (this.activeWorkers.length <= this.startThreads) return;
+        
+        const workerObj = this.activeWorkers.pop(); 
+        
+        if (workerObj) {
+            workerObj.worker.terminate();
+            console.log(`%c[Engine] 📉 Worker killed (ID: ${workerObj.id}). Result frozen.`, 'color: orange;');
+        }
     }
 
     start(onUpdate, onFinish) {
         this.startTime = performance.now();
-        console.log(`%c[Engine] Starting ${this.type} test (Max Threads: ${this.maxThreads}, Increment: +${this.rampUpIncrement})`, 'color: #2979ff; font-weight: bold;');
+        this.lastTime = this.startTime;
+        this.uiSpeed = 0;
+        this.prevUiSpeed = 0;
 
-        // Reset UI dla wątków
+        console.log(`%c[Engine] Starting ${this.type} test (Dynamic Chunk Sizing)`, 'color: #2979ff; font-weight: bold;');
+
         if(el('thread-badge')) el('thread-badge').style.opacity = '1';
 
-        // 1. Start początkowy
         for (let i = 0; i < this.startThreads; i++) {
             this.addWorker();
         }
 
-        // 2. Smart Ramp-up Loop
-        if (this.rampUpIncrement > 0) {
-            // ZMIANA: Interwał zwiększony do 2000ms (2s)
-            this.rampUpTimer = setInterval(() => {
-                if (this.activeWorkers.length >= this.maxThreads) {
-                    clearInterval(this.rampUpTimer);
-                    return;
-                }
+        setTimeout(() => {
+            if(this.status === 'warmup' && this.maxThreads > 1) {
+                this.status = 'scaling';
+                console.log(`[Engine] Phase change: Warmup -> Scaling`);
+            }
+        }, 800);
 
-                // SMART CHECK - Złagodzony próg nasycenia
-                if (this.activeWorkers.length > this.startThreads && this.prevSpeed > 0) {
-                    const growth = (this.currentSpeed - this.prevSpeed) / this.prevSpeed;
-                    console.log(`[Engine] 📊 Speed Growth: ${(growth * 100).toFixed(1)}% (Active Threads: ${this.activeWorkers.length})`);
-
-                    // ZMIANA: Próg nasycenia 5% (0.05) - kompromis
-                    if (growth < 0.05) { 
-                        console.log(`%c[Engine] 🛑 Saturation detected (Low gain < 5%). Stopping ramp-up.`, 'color: orange; font-weight: bold;');
-                        clearInterval(this.rampUpTimer);
-                        return;
-                    }
-                }
-
-                this.prevSpeed = this.currentSpeed;
-
-                for(let k=0; k<this.rampUpIncrement; k++) {
-                    this.addWorker();
-                }
-
-            }, 2000); // 2 sekundy na ustabilizowanie
+        if (this.maxThreads > 1) {
+            this.processTimer = setInterval(() => {
+                this.evaluateNetworkConditions();
+            }, this.monitorInterval);
         }
 
-        // 3. Główna pętla UI
         this.timer = setInterval(() => {
             const now = performance.now();
             const duration = (now - this.startTime) / 1000;
 
-            let totalBytes = 0;
-            for (let bytes of this.workerResults.values()) {
-                totalBytes += bytes;
+            let rawTotalBytes = 0;
+            for (let bytes of this.workerResults.values()) rawTotalBytes += bytes;
+            
+            if (rawTotalBytes < this.maxTotalBytesSeen) rawTotalBytes = this.maxTotalBytesSeen;
+            else this.maxTotalBytesSeen = rawTotalBytes;
+            
+            let totalBytes = rawTotalBytes;
+            let avgSpeed = (duration > 0.1) ? (totalBytes * 8) / duration / 1e6 : 0;
+
+            const dt = (now - this.lastTime) / 1000;
+            if (dt > 0) {
+                const db = totalBytes - this.lastTotalBytes;
+                const safeDb = Math.max(0, db);
+                const instSpeed = (safeDb * 8) / dt / 1e6;
+                const alpha = (this.type === 'upload') ? 0.1 : 0.3;
+                
+                if (this.currentInstantSpeed === 0) this.currentInstantSpeed = instSpeed;
+                else this.currentInstantSpeed = (instSpeed * alpha) + (this.currentInstantSpeed * (1 - alpha));
             }
 
-            let speed = (duration > 0.2) ? (totalBytes * 8) / duration / 1e6 : 0;
-            this.currentSpeed = speed;
+            this.lastTime = now;
+            this.lastTotalBytes = totalBytes;
 
-            onUpdate(speed, duration, this.activeWorkers.length);
+            if (this.uiSpeed === 0) this.uiSpeed = avgSpeed;
+
+            if (avgSpeed < this.uiSpeed * 0.7 && this.uiSpeed > 10) {
+                 avgSpeed = this.uiSpeed; 
+            }
+
+            const uiAlpha = (avgSpeed > this.uiSpeed) ? 0.2 : 0.05;
+            this.uiSpeed = (avgSpeed * uiAlpha) + (this.uiSpeed * (1 - uiAlpha));
+
+            if (this.uiSpeed < this.prevUiSpeed * 0.98) {
+                this.uiSpeed = this.prevUiSpeed * 0.98;
+            }
+            this.prevUiSpeed = this.uiSpeed;
+
+            onUpdate(this.uiSpeed, duration, this.activeWorkers.length);
 
             if (duration * 1000 >= TEST_DURATION) {
                 this.stop();
-                onFinish(speed);
+                onFinish((totalBytes * 8) / duration / 1e6);
             }
-        }, 150); 
+        }, 100); 
+    }
+
+    evaluateNetworkConditions() {
+        if (this.status !== 'scaling') return;
+        if (!this.currentInstantSpeed || this.currentInstantSpeed <= 0) return;
+
+        if (this.prevSpeed === 0) {
+            this.prevSpeed = this.currentInstantSpeed;
+            return;
+        }
+
+        const growth = (this.currentInstantSpeed - this.prevSpeed) / this.prevSpeed;
+        const dropThreshold = (this.type === 'upload') ? -0.30 : -0.20;
+
+        if (growth > this.minGrowth) {
+            if (this.activeWorkers.length < this.maxThreads) {
+                this.addWorker();
+                this.stableCount = 0; 
+            } else {
+                this.status = 'sustain';
+            }
+        } 
+        else if (growth < dropThreshold) {
+            if (this.currentInstantSpeed > 50) {
+                console.log(`[Engine] 🛑 Congestion detected (Speed drop ${(growth*100).toFixed(1)}%).`);
+                this.removeLastWorker();
+                this.status = 'sustain'; 
+            } else {
+                console.log(`[Engine] ⚠️ Fluctuation at low speed. Ignoring drop.`);
+            }
+        } 
+        else {
+            this.stableCount++;
+            if (this.stableCount >= 5) {
+                console.log(`[Engine] 📊 Plateau detected. Speed stable. Entering Sustain.`);
+                this.status = 'sustain';
+            }
+        }
+
+        this.prevSpeed = this.currentInstantSpeed;
     }
 
     stop() {
         clearInterval(this.timer);
-        clearInterval(this.rampUpTimer);
+        clearInterval(this.processTimer);
         
-        console.log(`%c[Engine] Test finished. Final Threads: ${this.activeWorkers.length}`, 'color: #ff1744; font-weight: bold;');
+        console.log(`%c[Engine] Test finished. Threads: ${this.activeWorkers.length}.`, 'color: #ff1744; font-weight: bold;');
 
-        // Dim UI badge
         if(el('thread-badge')) el('thread-badge').style.opacity = '0.5';
 
-        this.activeWorkers.forEach(w => w.terminate());
+        this.activeWorkers.forEach(w => w.worker.terminate());
         this.activeWorkers = [];
+        this.workerResults.clear(); 
         
         if (this.blobUrl) URL.revokeObjectURL(this.blobUrl);
     }
 }
 
-// --- PUBLIC API ---
-
-export async function runPing() {
-    const start = performance.now();
-    try { 
-        await fetch(`/api/ping?t=${Date.now()}`, { cache: "no-store" }); 
-        return performance.now() - start; 
-    } catch(e) { 
-        console.error("Ping error:", e);
-        return 0; 
-    }
-}
+// --- PUBLIC EXPORTS ---
 
 export function runDownload() {
     return new Promise((resolve) => {
         let maxT = (THREADS === 1) ? 1 : THREADS;
-        if (THREADS > 1 && isMobileDevice()) {
-            // ZMIANA: Limit Download na Mobile ustawiony na 6
-            maxT = Math.min(maxT, 6); 
-        }
+        if (THREADS > 1 && isMobileDevice()) maxT = Math.min(maxT, 6); 
 
         const engine = new SpeedTestEngine('download', maxT);
         const currentGauge = getGaugeInstance();
@@ -262,8 +402,6 @@ export function runDownload() {
         engine.start(
             (speed, duration, activeThreads) => {
                 checkGaugeRange(speed); 
-                
-                // Aktualizacja UI wątków
                 if(el('thread-count')) el('thread-count').innerText = activeThreads;
 
                 let displaySpeed = (currentUnit === 'mbs') ? speed / 8 : speed;
@@ -283,9 +421,15 @@ export function runDownload() {
 export function runUpload() {
     return new Promise((resolve) => {
         let maxT = (THREADS === 1) ? 1 : THREADS;
-        if (THREADS > 1 && isMobileDevice()) {
-            // ZMIANA: Limit Upload na Mobile ustawiony na 6
-            maxT = Math.min(maxT, 6);
+        
+        if (THREADS > 1) {
+            if (isMobileDevice()) {
+                // Mobile: 6 wątków
+                maxT = Math.min(maxT, 6);
+            } else {
+                // Desktop: 12 wątków
+                maxT = Math.min(maxT, 12);
+            }
         }
 
         const engine = new SpeedTestEngine('upload', maxT);
@@ -294,8 +438,6 @@ export function runUpload() {
         engine.start(
             (speed, duration, activeThreads) => {
                 checkGaugeRange(speed); 
-                
-                // Aktualizacja UI wątków
                 if(el('thread-count')) el('thread-count').innerText = activeThreads;
 
                 let displaySpeed = (currentUnit === 'mbs') ? speed / 8 : speed;

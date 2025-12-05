@@ -1,6 +1,6 @@
-// Odczytujemy zapisaną wartość przy starcie. Domyślnie 12 (Multi).
+// Odczytujemy zapisaną wartość przy starcie. Domyślnie 16 (Multi) dla Desktop.
 const savedThreads = localStorage.getItem('ls_threads');
-export let THREADS = savedThreads ? parseInt(savedThreads) : 12;
+export let THREADS = savedThreads ? parseInt(savedThreads) : 16; // ZMIANA: 12 -> 16
 
 export const TEST_DURATION = 12000; 
 
@@ -97,7 +97,7 @@ export const translations = {
         lbl_last_backup: "Ostatni backup:",
         lbl_next_backup: "Następny backup:",
         status_connected: "Status: Połączono",
-        status_disconnected: "Status: Nie połączono", // Poprawiony błąd
+        status_disconnected: "Status: Nie połączono",
         status_success: "Sukces", 
         lbl_status_prefix: "Status: ", 
         gdrive_help_1: "Wejdź na Google Cloud Console i utwórz nowy projekt.",

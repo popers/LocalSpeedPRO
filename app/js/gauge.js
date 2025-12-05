@@ -15,25 +15,17 @@ export function getGaugeSize() {
 
     const w = container.clientWidth;
     const h = container.clientHeight;
-
-    // Marginesy na zero
     const paddingX = 0; 
     
-    // Sprawdzamy czy to mobile (bazując na szerokości okna, tak jak w CSS breakpoint)
     const isMobile = window.innerWidth <= 900;
 
     if (isMobile) {
-        // ZMIANA: Na mobile ignorujemy wysokość kontenera (h), która często ogranicza licznik.
-        // Bierzemy pełną szerokość. Kontener elastycznie się rozciągnie w pionie.
         return Math.max(w - paddingX, 280);
     }
 
-    // Desktop: logika zachowawcza (min z szerokości i wysokości)
     const bottomSpace = 50; 
     const availableWidth = w - paddingX;
     const availableHeight = h - bottomSpace;
-
-    // Wybieramy mniejszy wymiar, aby zachować proporcje w oknie
     let size = Math.min(availableWidth, availableHeight);
 
     return Math.max(size, 280); 
@@ -44,8 +36,6 @@ export function initGauge() {
     const size = getGaugeSize();
     const isDark = document.body.getAttribute('data-theme') === 'dark';
     const tickColor = isDark ? '#eeeeee' : '#2d3436'; 
-    
-    // Pobieramy aktualny kolor wiodący
     const mainColor = getPrimaryColor();
     
     if (gauge) {
@@ -110,8 +100,8 @@ export function initGauge() {
         needleWidth: 4,
         colorNeedle: mainColor,
         colorNeedleEnd: mainColor,
-        animationDuration: 100, 
-        animationRule: "linear",
+        animationDuration: 200, 
+        animationRule: "dequint", 
         fontValue: "Roboto",
         fontNumbers: "Roboto",
         fontTitle: "Roboto",
@@ -139,8 +129,14 @@ export function reloadGauge() {
     initGauge();
 
     if (savedValue > 0 && gauge) {
+        gauge.update({ animationDuration: 0 });
+        
         checkGaugeRange(savedValue, true); 
         gauge.value = savedValue;
+        
+        setTimeout(() => {
+            if(gauge) gauge.update({ animationDuration: 200 });
+        }, 50);
     }
 }
 
@@ -188,6 +184,20 @@ export function checkGaugeRange(speedMbps, forceUpdate = false) {
                 : [ { from: 0, to: 400, color: hexToRgba(mainColor, alpha1) }, { from: 400, to: 800, color: hexToRgba(mainColor, alpha2) }, { from: 800, to: 1000, color: hexToRgba(mainColor, alpha3) } ];
         }
 
-        gauge.update({ maxValue: newMax, majorTicks: newTicks, highlights: newHighlights });
+        // FIX: Zatrzymaj animację przed zmianą skali, aby uniknąć "skoku w dół"
+        gauge.update({ 
+            animationDuration: 0,
+            maxValue: newMax, 
+            majorTicks: newTicks, 
+            highlights: newHighlights 
+        });
+        
+        // Ustaw wartość natychmiast na nowej skali
+        gauge.value = val;
+
+        // Przywróć animację po chwili
+        setTimeout(() => {
+            if(gauge) gauge.update({ animationDuration: 200 });
+        }, 50);
     }
 }
