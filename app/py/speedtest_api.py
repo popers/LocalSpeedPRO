@@ -1,10 +1,28 @@
 import time
 import os
-from fastapi import APIRouter, Request, HTTPException
+import logging
+from fastapi import APIRouter, Request, HTTPException, Body
 from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel
 from .database import STATIC_DIR
 
 router = APIRouter()
+logger = logging.getLogger("ClientLogger")
+
+# Model danych dla logu
+class LogMessage(BaseModel):
+    text: str
+
+# --- ENDPOINT DO LOGOWANIA W KONSOLI DOCKERA ---
+@router.post("/api/log_client")
+async def log_from_client(data: LogMessage):
+    """
+    Odbiera komunikat z przeglądarki i wypisuje go w konsoli serwera.
+    Dzięki temu widać 'docker logs' co dzieje się u klienta.
+    """
+    # Używamy print z flush=True, aby na pewno pojawiło się w logach Dockera natychmiast
+    print(f"\033[96m[CLIENT JS]\033[0m {data.text}", flush=True)
+    return {"status": "ok"}
 
 # --- SPEEDTEST API ---
 
@@ -19,14 +37,10 @@ async def upload_stream(request: Request):
     try:
         async for chunk in request.stream():
             total_bytes += len(chunk)
-            # Opcjonalnie: Jeśli chcesz ograniczyć zużycie CPU, możesz dodać tutaj mały sleep(0),
-            # ale dla speedtestu chcemy maksymalnej przepustowości.
     except Exception as e:
-        # Błędy połączenia są normalne przy przerwaniu testu przez klienta
         pass
         
     duration = time.time() - start_time
-    # Zapobieganie dzieleniu przez zero
     if duration <= 0: duration = 0.001
     
     return JSONResponse({"received": total_bytes, "time": duration})
@@ -40,7 +54,6 @@ async def ping():
 async def serve_test_file(filename: str):
     """
     Serwuje pliki binarne do testu downloadu.
-    Używa FileResponse, który jest zoptymalizowany pod kątem zerocopy sendfile() w systemie operacyjnym.
     """
     file_path = os.path.join(STATIC_DIR, filename)
     
@@ -50,10 +63,9 @@ async def serve_test_file(filename: str):
     return FileResponse(
         file_path,
         media_type='application/octet-stream',
-        # Cache-Control: no-store jest CRITICAL dla wiarygodności testu
         headers={
             "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
             "Pragma": "no-cache",
-            "Content-Encoding": "identity" # Zapobiega kompresji gzip/brotli
+            "Content-Encoding": "identity"
         }
     )

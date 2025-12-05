@@ -3,13 +3,12 @@ services:
     build: .
     container_name: localspeed_app
     ports:
-      - 8002:80
+      - "8002:80"
     restart: unless-stopped
     depends_on:
       db:
-        condition: service_healthy  # KLUCZOWE: Czekaj aż baza będzie 'healthy'
+        condition: service_healthy
     environment:
-      #- WEB_CONCURRENCY=8
       - TZ=Europe/Warsaw
       - APP_USER=${APP_USER:-admin}
       - APP_PASSWORD=${APP_PASSWORD:-admin}
@@ -20,6 +19,8 @@ services:
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
+      # Sekret sesji powinien byc losowy w produkcji
+      - APP_SECRET=${APP_SECRET:-changeme_in_production_please}
     volumes:
       - ./app:/app
   
@@ -27,7 +28,6 @@ services:
     image: mariadb:10.11
     container_name: localspeed_db
     restart: unless-stopped
-    # Dodajemy --innodb-use-native-aio=0 aby uniknąć problemów z io_uring na niektórych kernelach
     command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW --innodb-use-native-aio=0
     environment:
       - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
@@ -38,10 +38,12 @@ services:
     volumes:
       - mariadb_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      # FIX: Używamy mysqladmin ping zamiast healthcheck.sh
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p${DB_ROOT_PASSWORD} || exit 1"]
       interval: 5s
       timeout: 5s
-      retries: 10   # Zwiększamy liczbę prób, bo pierwszy start inicjalizacji trwa dłużej
+      retries: 10
+      start_period: 10s
 
 volumes:
   mariadb_data:
