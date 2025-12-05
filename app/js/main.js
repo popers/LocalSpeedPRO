@@ -53,7 +53,7 @@ async function startTest() {
     btn.disabled = true;
     btn.classList.add('loading'); 
 
-    el('speed-value').innerText = "0.00";
+    // Usunięto reset speed-value, bo elementu już nie ma
     
     try { reloadGauge(); } catch(e) { console.warn("Gauge error:", e); }
     try { resetCharts(); } catch(e) { console.warn("Charts error:", e); }
@@ -83,7 +83,7 @@ async function startTest() {
             gaugeInstance.update({ animationDuration: 1200 }); 
             gaugeInstance.value = 0;
         }
-        el('speed-value').innerText = "0.00";
+        // Usunięto reset speed-value
         await new Promise(r => setTimeout(r, 1200)); 
         if (gaugeInstance) gaugeInstance.update({ animationDuration: 100 }); 
 
@@ -99,7 +99,7 @@ async function startTest() {
             gaugeInstance.update({ animationDuration: 1200 });
             gaugeInstance.value = 0;
         }
-        el('speed-value').innerText = "0.00";
+        // Usunięto reset speed-value
         await new Promise(r => setTimeout(r, 1200));
         if (gaugeInstance) gaugeInstance.update({ animationDuration: 100 }); 
 
@@ -326,7 +326,7 @@ window.onload = () => {
                 setThreads(1);
                 log(translations[lang].msg_mode_single || "Tryb: Pojedyncze połączenie");
             } else {
-                setThreads(12);
+                setThreads(16);
                 log(translations[lang].msg_mode_multi || "Tryb: Wiele połączeń");
             }
             updateModeUI();

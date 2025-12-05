@@ -308,7 +308,19 @@ class SpeedTestEngine {
             if (dt > 0) {
                 const db = totalBytes - this.lastTotalBytes;
                 const safeDb = Math.max(0, db);
-                const instSpeed = (safeDb * 8) / dt / 1e6;
+                let instSpeed = (safeDb * 8) / dt / 1e6;
+
+                // --- GAP MASKING (Nowość - Relatywne) ---
+                // Jeśli jest Upload, test już trwa, a chwilowa prędkość spada gwałtownie (np. o połowę),
+                // to ignorujemy ten spadek (traktujemy jako latency gap) i trzymamy poprzednią wartość.
+                if (this.type === 'upload' && duration > 0.5) {
+                    // Warunek: Prędkość spada poniżej 95% aktualnej średniej chwilowej (tolerancja 5%)
+                    // Zmieniono z 0.6 (40%) na 0.95 (5%) zgodnie z życzeniem
+                    if (this.currentInstantSpeed > 5 && instSpeed < this.currentInstantSpeed * 0.90) {
+                         instSpeed = this.currentInstantSpeed; 
+                    }
+                }
+
                 const alpha = (this.type === 'upload') ? 0.1 : 0.3;
                 
                 if (this.currentInstantSpeed === 0) this.currentInstantSpeed = instSpeed;
@@ -323,32 +335,23 @@ class SpeedTestEngine {
             if (this.uiSpeed === 0) this.uiSpeed = avgSpeed;
 
             // 1. ZABEZPIECZENIE: Faza Scaling (dodawanie workerów)
-            // Jeśli jesteśmy w fazie rozpędzania, zabraniamy spadków UI.
-            // Spadki w tej fazie są zazwyczaj techniczne (CPU/Network lag przy nowym połączeniu).
             if (this.status === 'scaling' && avgSpeed < this.uiSpeed) {
                 avgSpeed = this.uiSpeed; 
             }
 
             // 2. ZABEZPIECZENIE: "Czkawka" (Hiccup)
-            // Jeśli chwilowa prędkość (instant) jest bliska zeru, ale średnia jest wysoka,
-            // to znaczy, że mamy pauzę w danych (np. zmiana bufora). Ignorujemy to w UI.
             if (this.currentInstantSpeed < this.uiSpeed * 0.1 && this.uiSpeed > 5) {
                 avgSpeed = this.uiSpeed;
             }
 
             // 3. Obliczanie Alpha (Bezwładność)
-            // Upload ma mniejszy riseFactor, żeby nie skakał w górę zbyt gwałtownie.
-            // Upload ma też BARDZO MAŁY fallFactor, żeby "sklejać" przerwy między paczkami.
             let riseFactor = (this.type === 'upload') ? 0.1 : 0.2; 
-            let fallFactor = (this.type === 'upload') ? 0.01 : 0.05; // 0.01 = Bardzo powolne opadanie
+            let fallFactor = (this.type === 'upload') ? 0.01 : 0.05; 
 
             const uiAlpha = (avgSpeed > this.uiSpeed) ? riseFactor : fallFactor;
             this.uiSpeed = (avgSpeed * uiAlpha) + (this.uiSpeed * (1 - uiAlpha));
 
             // 4. TWARDA BLOKADA OPADANIA (Needle Gravity)
-            // Zmieniono z 0.98 na 0.995 (dla uploadu nawet 0.999).
-            // To zapobiega spadkowi o więcej niż 0.5% (dla download) lub 0.1% (dla upload) na cykl (100ms).
-            // W efekcie wskazówka może opaść max ~1-5% na sekundę.
             let dropLimit = (this.type === 'upload') ? 0.999 : 0.995;
             
             if (this.uiSpeed < this.prevUiSpeed * dropLimit) {
@@ -376,9 +379,6 @@ class SpeedTestEngine {
         const growth = (this.currentInstantSpeed - this.prevSpeed) / this.prevSpeed;
         const dropThreshold = (this.type === 'upload') ? -0.30 : -0.20;
 
-        // FIX: Na localhost/szybkich sieciach prędkość stabilizuje się natychmiast na 2 wątkach.
-        // Algorytm mylnie uznaje to za plateau. Wymuszamy wyjście do min. 4 wątków.
-        // Warunek (!isCrash) zapobiega dodawaniu wątków, gdy sieć się dławi.
         const isCrash = (growth < dropThreshold);
         const forceScaling = (!isCrash && this.activeWorkers.length < 4 && this.currentInstantSpeed > 5);
 
@@ -426,7 +426,7 @@ class SpeedTestEngine {
 export function runDownload() {
     return new Promise((resolve) => {
         let maxT = (THREADS === 1) ? 1 : THREADS;
-        if (THREADS > 1 && isMobileDevice()) maxT = Math.min(maxT, 6); 
+        if (THREADS > 1 && isMobileDevice()) maxT = Math.min(maxT, 8); 
         const engine = new SpeedTestEngine('download', maxT);
         const currentGauge = getGaugeInstance();
 
@@ -436,7 +436,7 @@ export function runDownload() {
                 if(el('thread-count')) el('thread-count').innerText = activeThreads;
                 let displaySpeed = (currentUnit === 'mbs') ? speed / 8 : speed;
                 if (currentGauge) currentGauge.value = displaySpeed; 
-                el('speed-value').innerText = displaySpeed.toFixed(2); 
+                // Usunięto: el('speed-value').innerText = displaySpeed.toFixed(2); 
                 el('down-val').textContent = formatSpeed(speed); 
                 updateChart('down', speed);
             },
@@ -452,7 +452,7 @@ export function runUpload() {
     return new Promise((resolve) => {
         let maxT = (THREADS === 1) ? 1 : THREADS;
         if (THREADS > 1) {
-            maxT = isMobileDevice() ? Math.min(maxT, 6) : Math.min(maxT, 12);
+            maxT = isMobileDevice() ? Math.min(maxT, 8) : Math.min(maxT, 16);
         }
         const engine = new SpeedTestEngine('upload', maxT);
         const currentGauge = getGaugeInstance();
@@ -463,7 +463,7 @@ export function runUpload() {
                 if(el('thread-count')) el('thread-count').innerText = activeThreads;
                 let displaySpeed = (currentUnit === 'mbs') ? speed / 8 : speed;
                 if (currentGauge) currentGauge.value = displaySpeed; 
-                el('speed-value').innerText = displaySpeed.toFixed(2); 
+                // Usunięto: el('speed-value').innerText = displaySpeed.toFixed(2); 
                 el('up-val').textContent = formatSpeed(speed);
                 updateChart('up', speed);
             },

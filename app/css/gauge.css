@@ -13,48 +13,6 @@
     overflow: hidden; 
 }
 
-/* LICZNIK CYFROWY */
-.digital-box {
-    background: var(--bg);
-    border-radius: 8px; 
-    padding: 8px 25px;   
-    
-    box-shadow: 
-        inset 1px 1px 4px rgba(0,0,0,0.06),
-        inset -1px -1px 4px rgba(255,255,255,0.05);
-
-    border-bottom: 2px solid var(--primary); 
-    
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    
-    /* Zmieniono marginesy dla nowego układu */
-    margin-top: 5px; 
-    margin-bottom: 1.5rem;
-    
-    min-width: 140px; 
-    transition: all 0.3s ease;
-    z-index: 5; 
-    position: relative;
-}
-
-[data-theme="dark"] .digital-box {
-    box-shadow: 
-        inset 2px 2px 6px rgba(0,0,0,0.3),
-        inset -1px -1px 4px rgba(255,255,255,0.02);
-    border-bottom: 2px solid var(--primary);
-}
-
-.digital-box span#speed-value {
-    font-family: 'Roboto Mono', monospace;
-    font-size: 1.8rem; 
-    font-weight: 500;
-    color: var(--text);
-    letter-spacing: -1px;
-    line-height: 1;
-}
-
 /* WYŚWIETLANIE PINGU */
 .ping-display {
     background: rgba(128,128,128,0.1);
@@ -166,17 +124,7 @@
         min-height: 300px; 
     }
 
-    .digital-box {
-        padding: 6px 20px;
-        min-width: 100px;
-        border-radius: 8px;
-        margin-top: 5px; 
-        margin-bottom: 1rem;
-    }
-
-    .digital-box span#speed-value {
-        font-size: 1.5rem; 
-    }
+    /* Usunięto style .digital-box */
 
     .ping-display {
         padding: 6px 15px;
