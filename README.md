@@ -1,6 +1,5 @@
 # LocalSpeed PRO ![version](https://img.shields.io/badge/v0.1-purple)
 
-
 A lightweight, self-hosted network performance testing tool designed for Docker. Built with a Python FastAPI backend and a vanilla JavaScript frontend using Web Workers to ensure accurate high-speed measurements for LAN and WAN environments.
 
 ### Features:
@@ -31,9 +30,9 @@ A lightweight, self-hosted network performance testing tool designed for Docker.
 
 <img alt="personalization" src="https://github.com/user-attachments/assets/f0264238-8c2c-438a-b315-c47190efb896" />
 
-#### 🚀 Installation (Docker)
+### 🚀 Installation (Docker)
 
-### Docker Compose
+**Docker Compose:**
 ```
 services:
   localspeedpro:
@@ -89,7 +88,7 @@ networks:
     driver: bridge
 
 ```
-### .env
+**.env:**
 ```
 APP_PORT=8002
 APP_USER=admin
@@ -106,4 +105,4 @@ DB_ROOT_PASSWORD=dbrootpassword
 docker compose up -d
 ```
 
-Your SpeedtestLog dashboard will be accessible at: http://your-server-ip:8002
+Your LocalSpeed PRO dashboard will be accessible at: http://your-server-ip:8002
