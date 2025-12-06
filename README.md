@@ -89,7 +89,7 @@ networks:
 ```
 ### .env
 ```
-APP_PORT=8003
+APP_PORT=8002
 APP_USER=admin
 APP_PASSWORD=admin
 AUTH_ENABLED=true
