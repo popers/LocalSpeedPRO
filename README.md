@@ -98,3 +98,10 @@ DB_USER=ls_user
 DB_PASSWORD=dbpassword
 DB_ROOT_PASSWORD=dbrootpassword
 ```
+
+**Start the containers:**
+```
+docker compose up -d
+```
+
+Your SpeedtestLog dashboard will be accessible at: http://your-server-ip:8002
