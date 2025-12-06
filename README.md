@@ -1,4 +1,4 @@
-# LocalSpeed PRO
+# LocalSpeed PRO v0.1
 
 A lightweight, self-hosted network performance testing tool designed for Docker. Built with a Python FastAPI backend and a vanilla JavaScript frontend using Web Workers to ensure accurate high-speed measurements for LAN and WAN environments.
 
