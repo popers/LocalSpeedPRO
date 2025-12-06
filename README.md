@@ -52,13 +52,12 @@ services:
       - ls_network
     healthcheck:
       test:
-        - CMD
-        - healthcheck.sh
-        - --connect
-        - --innodb_initialized
-      interval: 10s
+        - CMD-SHELL
+        - mysqladmin ping -h localhost -u root -p${DB_ROOT_PASSWORD} || exit 1
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
 volumes:
   db_data: null
 networks:
