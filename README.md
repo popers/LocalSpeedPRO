@@ -31,6 +31,8 @@ A lightweight, self-hosted network performance testing tool designed for Docker.
 
 <img alt="personalization" src="https://github.com/user-attachments/assets/f0264238-8c2c-438a-b315-c47190efb896" />
 
+#### 🚀 Installation (Docker)
+
 ### Docker Compose
 ```
 services:
