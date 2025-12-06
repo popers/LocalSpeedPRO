@@ -1,7 +1,7 @@
 import time
 import os
 import logging
-from fastapi import APIRouter, Request, HTTPException, Body
+from fastapi import APIRouter, Request, HTTPException, Response
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from .database import STATIC_DIR
@@ -18,9 +18,7 @@ class LogMessage(BaseModel):
 async def log_from_client(data: LogMessage):
     """
     Odbiera komunikat z przeglądarki i wypisuje go w konsoli serwera.
-    Dzięki temu widać 'docker logs' co dzieje się u klienta.
     """
-    # Używamy print z flush=True, aby na pewno pojawiło się w logach Dockera natychmiast
     print(f"\033[96m[CLIENT JS]\033[0m {data.text}", flush=True)
     return {"status": "ok"}
 
@@ -29,8 +27,7 @@ async def log_from_client(data: LogMessage):
 @router.post("/api/upload")
 async def upload_stream(request: Request):
     """
-    Odbiera strumień danych (chunked transfer) i mierzy jego wielkość.
-    Nie zapisuje danych na dysku (oszczędność I/O), tylko zlicza bajty.
+    Odbiera strumień danych i zlicza bajty.
     """
     total_bytes = 0
     start_time = time.time()
@@ -47,8 +44,15 @@ async def upload_stream(request: Request):
 
 @router.get("/api/ping")
 async def ping():
-    """Lekki endpoint do pomiaru opóźnienia."""
-    return {"pong": time.time()}
+    """
+    Ultra-lekki endpoint do pomiaru opóźnienia.
+    Dodano nagłówek Timing-Allow-Origin, aby przeglądarka odblokowała
+    precyzyjne metryki w Performance API (Resource Timing).
+    """
+    return Response(status_code=204, headers={
+        "Timing-Allow-Origin": "*",
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"
+    })
 
 @router.get("/static/{filename}")
 async def serve_test_file(filename: str):

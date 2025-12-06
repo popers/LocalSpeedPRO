@@ -15,8 +15,8 @@ const sendLogToDocker = (text) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: text }),
-        keepalive: true // Ważne: pozwala wysłać log nawet jak przeglądarka jest zajęta
-    }).catch(() => {}); // Ignorujemy błędy logowania (fire & forget)
+        keepalive: true
+    }).catch(() => {});
 };
 
 // --- WORKER CODE (INLINE BLOB) ---
@@ -85,11 +85,12 @@ function runUpload(url, maxBufferSize, minBufferSize) {
         xhr.open('POST', url + (url.includes('?') ? '&' : '?') + 't=' + Math.random(), true);
         
         // --- DEBUG LOGGING ---
-        // Dodano logowanie rozmiaru bufora przy każdej próbie wysłania
+        /*
         self.postMessage({ 
             type: 'log', 
             text: \`[Upload Debug] Buffer: \${currentSize} bytes\` 
         });
+        */
         
         const chunk = masterBuffer.subarray(0, currentSize);
         const blob = new Blob([chunk]);
@@ -120,8 +121,8 @@ function runUpload(url, maxBufferSize, minBufferSize) {
                 if (currentSize > maxBufferSize) currentSize = maxBufferSize;
 
                 if (currentSize !== oldSize) {
-                    const msg = \`[Worker] ⬆️ Resize: \${(oldSize/1024).toFixed(0)}KB -> \${(currentSize/1024).toFixed(0)}KB (\${duration.toFixed(1)}ms)\`;
-                    self.postMessage({ type: 'log', text: msg });
+                    // const msg = \`[Worker] ⬆️ Resize: \${(oldSize/1024).toFixed(0)}KB -> \${(currentSize/1024).toFixed(0)}KB (\${duration.toFixed(1)}ms)\`;
+                    // self.postMessage({ type: 'log', text: msg });
                 }
             } 
             
@@ -141,31 +142,81 @@ function runUpload(url, maxBufferSize, minBufferSize) {
 
 // --- PHASE 1: PRE-TEST (LATENCY & JITTER) ---
 export async function runPing() {
-    const PING_COUNT = 10;
+    const PING_COUNT = 20; 
     const pings = [];
     
-    // Log start to Docker
-    sendLogToDocker(`[Phase 1] Starting Ping Test (${PING_COUNT} probes)...`);
+    sendLogToDocker(`[Phase 1] Starting Ping Test (XHR + Resource Timing)...`);
 
+    // Helper XHR Promise
+    const pingRequest = (url) => {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("GET", url, true);
+            // OpenSpeedTest trick: Używamy XHR, bo jest "lżejszy" dla event loopa
+            // przy małych requestach niż fetch.
+            
+            const startFallback = performance.now();
+            
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState === 4) { // DONE
+                    // 1. Próbujemy pobrać ultra-dokładny czas z silnika przeglądarki
+                    // Wymaga nagłówka 'Timing-Allow-Origin: *' na serwerze!
+                    const entries = performance.getEntriesByName(new URL(url, window.location.href).href);
+                    
+                    if (entries.length > 0) {
+                        const entry = entries[entries.length - 1];
+                        // duration = całkowity czas (request + response)
+                        // responseStart - requestStart = czas samej sieci (Latency) bez pobierania body
+                        // W przypadku pustej odpowiedzi (204) duration jest prawie równe latency.
+                        const preciseDuration = entry.duration;
+                        resolve(preciseDuration);
+                    } else {
+                        // Fallback do timera JS
+                        const endFallback = performance.now();
+                        resolve(endFallback - startFallback);
+                    }
+                }
+            };
+            xhr.onerror = () => reject("XHR Error");
+            xhr.send();
+        });
+    };
+
+    // 1. WARMUP
+    try { await pingRequest(`/api/ping?warmup=${Date.now()}`); } catch(e) {}
+
+    // 2. MEASUREMENT LOOP
     for(let i=0; i<PING_COUNT; i++) {
-        const start = performance.now();
+        // Ważne: Unikalny URL, żeby Resource Timing API utworzyło nowy wpis
+        const url = `/api/ping?t=${Date.now()}_${i}`;
+        
+        // Czyścimy bufor, żeby nie szukać w starych wpisach
+        performance.clearResourceTimings();
+
         try {
-            await fetch(`/api/ping?t=${Date.now()}`, { cache: "no-store" });
-            const duration = performance.now() - start;
-            pings.push(duration);
-            await new Promise(r => setTimeout(r, 10));
+            const duration = await pingRequest(url);
+            
+            // Filtrujemy piki (garbage collector)
+            if (duration < 200) {
+                pings.push(duration);
+            }
+            // Bardzo krótka pauza (5ms) - chcemy bombardować serwer jak 'ping -f'
+            await new Promise(r => setTimeout(r, 5));
         } catch(e) {
             console.warn("Ping failed", e);
         }
     }
 
     if (pings.length === 0) return 0;
+
+    // OpenSpeedTest logic: Najniższy wynik to 'Latency', średnia to 'Jitter' (pośrednio).
+    // W środowisku lokalnym (Docker) minPing powinien być teraz < 1ms lub ~1ms.
     const minPing = Math.min(...pings);
     const avgPing = pings.reduce((a,b) => a+b, 0) / pings.length;
     
-    // Log result to Docker
-    sendLogToDocker(`[Phase 1] Result: Min: ${minPing.toFixed(2)}ms, Avg: ${avgPing.toFixed(2)}ms`);
-    return minPing;
+    sendLogToDocker(`[Phase 1] Result: Min: ${minPing.toFixed(3)}ms (Avg: ${avgPing.toFixed(3)}ms)`);
+    
+    return minPing; 
 }
 
 // --- ENGINE ---
@@ -218,7 +269,6 @@ class SpeedTestEngine {
                     this.workerResults.set(id, e.data.bytes);
                 }
             } 
-            // ZMIANA: Przesyłamy log do Dockera
             else if (e.data.type === 'log') {
                 const msg = `[Worker ${id}] ${e.data.text.replace('[Worker] ', '')}`;
                 sendLogToDocker(msg);
@@ -310,12 +360,7 @@ class SpeedTestEngine {
                 const safeDb = Math.max(0, db);
                 let instSpeed = (safeDb * 8) / dt / 1e6;
 
-                // --- GAP MASKING (Nowość - Relatywne) ---
-                // Jeśli jest Upload, test już trwa, a chwilowa prędkość spada gwałtownie (np. o połowę),
-                // to ignorujemy ten spadek (traktujemy jako latency gap) i trzymamy poprzednią wartość.
                 if (this.type === 'upload' && duration > 0.5) {
-                    // Warunek: Prędkość spada poniżej 95% aktualnej średniej chwilowej (tolerancja 5%)
-                    // Zmieniono z 0.6 (40%) na 0.95 (5%) zgodnie z życzeniem
                     if (this.currentInstantSpeed > 5 && instSpeed < this.currentInstantSpeed * 0.90) {
                          instSpeed = this.currentInstantSpeed; 
                     }
@@ -330,28 +375,22 @@ class SpeedTestEngine {
             this.lastTime = now;
             this.lastTotalBytes = totalBytes;
 
-            // --- UI SMOOTHING LOGIC ---
-            
             if (this.uiSpeed === 0) this.uiSpeed = avgSpeed;
 
-            // 1. ZABEZPIECZENIE: Faza Scaling (dodawanie workerów)
             if (this.status === 'scaling' && avgSpeed < this.uiSpeed) {
                 avgSpeed = this.uiSpeed; 
             }
 
-            // 2. ZABEZPIECZENIE: "Czkawka" (Hiccup)
             if (this.currentInstantSpeed < this.uiSpeed * 0.1 && this.uiSpeed > 5) {
                 avgSpeed = this.uiSpeed;
             }
 
-            // 3. Obliczanie Alpha (Bezwładność)
             let riseFactor = (this.type === 'upload') ? 0.1 : 0.2; 
             let fallFactor = (this.type === 'upload') ? 0.01 : 0.05; 
 
             const uiAlpha = (avgSpeed > this.uiSpeed) ? riseFactor : fallFactor;
             this.uiSpeed = (avgSpeed * uiAlpha) + (this.uiSpeed * (1 - uiAlpha));
 
-            // 4. TWARDA BLOKADA OPADANIA (Needle Gravity)
             let dropLimit = (this.type === 'upload') ? 0.999 : 0.995;
             
             if (this.uiSpeed < this.prevUiSpeed * dropLimit) {
@@ -436,7 +475,6 @@ export function runDownload() {
                 if(el('thread-count')) el('thread-count').innerText = activeThreads;
                 let displaySpeed = (currentUnit === 'mbs') ? speed / 8 : speed;
                 if (currentGauge) currentGauge.value = displaySpeed; 
-                // Usunięto: el('speed-value').innerText = displaySpeed.toFixed(2); 
                 el('down-val').textContent = formatSpeed(speed); 
                 updateChart('down', speed);
             },
@@ -463,7 +501,6 @@ export function runUpload() {
                 if(el('thread-count')) el('thread-count').innerText = activeThreads;
                 let displaySpeed = (currentUnit === 'mbs') ? speed / 8 : speed;
                 if (currentGauge) currentGauge.value = displaySpeed; 
-                // Usunięto: el('speed-value').innerText = displaySpeed.toFixed(2); 
                 el('up-val').textContent = formatSpeed(speed);
                 updateChart('up', speed);
             },
