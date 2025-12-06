@@ -84,14 +84,6 @@ function runUpload(url, maxBufferSize, minBufferSize) {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', url + (url.includes('?') ? '&' : '?') + 't=' + Math.random(), true);
         
-        // --- DEBUG LOGGING ---
-        /*
-        self.postMessage({ 
-            type: 'log', 
-            text: \`[Upload Debug] Buffer: \${currentSize} bytes\` 
-        });
-        */
-        
         const chunk = masterBuffer.subarray(0, currentSize);
         const blob = new Blob([chunk]);
 
@@ -117,13 +109,7 @@ function runUpload(url, maxBufferSize, minBufferSize) {
             if (duration < 50) {
                 const oldSize = currentSize;
                 currentSize *= 2;
-                
                 if (currentSize > maxBufferSize) currentSize = maxBufferSize;
-
-                if (currentSize !== oldSize) {
-                    // const msg = \`[Worker] ⬆️ Resize: \${(oldSize/1024).toFixed(0)}KB -> \${(currentSize/1024).toFixed(0)}KB (\${duration.toFixed(1)}ms)\`;
-                    // self.postMessage({ type: 'log', text: msg });
-                }
             } 
             
             if (currentSize > maxBufferSize) currentSize = maxBufferSize;
@@ -140,40 +126,49 @@ function runUpload(url, maxBufferSize, minBufferSize) {
 }
 `;
 
-// --- PHASE 1: PRE-TEST (LATENCY & JITTER) ---
+// --- PHASE 1: PRE-TEST (HYBRID ICMP / HTTP) ---
 export async function runPing() {
-    const PING_COUNT = 20; 
+    sendLogToDocker(`[Phase 1] Starting Ping Test...`);
+
+    // --- KROK 1: Próba ICMP (Backend -> Client) ---
+    // To jest "Święty Graal" pingu - pomiar systemowy bez narzutu przeglądarki.
+    try {
+        const start = performance.now();
+        const res = await fetch('/api/ping_icmp');
+        if (res.ok) {
+            const data = await res.json();
+            if (data.ping && data.ping > 0) {
+                 sendLogToDocker(`[Phase 1] ICMP Result: ${data.ping} ms (Backend measured)`);
+                 return data.ping;
+            } else {
+                 sendLogToDocker(`[Phase 1] ICMP failed (Firewall/Docker?), falling back to HTTP...`);
+            }
+        }
+    } catch (e) {
+        console.warn("ICMP Request failed", e);
+    }
+
+    // --- KROK 2: Fallback do HTTP (OpenSpeedTest style) ---
+    // Jeśli ICMP się nie uda (np. brak 'ping' w kontenerze lub blokada),
+    // używamy naszej zoptymalizowanej metody XHR.
+    
+    const PING_COUNT = 15; 
     const pings = [];
     
-    sendLogToDocker(`[Phase 1] Starting Ping Test (XHR + Resource Timing)...`);
-
-    // Helper XHR Promise
     const pingRequest = (url) => {
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.open("GET", url, true);
-            // OpenSpeedTest trick: Używamy XHR, bo jest "lżejszy" dla event loopa
-            // przy małych requestach niż fetch.
             
             const startFallback = performance.now();
             
             xhr.onreadystatechange = () => {
-                if (xhr.readyState === 4) { // DONE
-                    // 1. Próbujemy pobrać ultra-dokładny czas z silnika przeglądarki
-                    // Wymaga nagłówka 'Timing-Allow-Origin: *' na serwerze!
+                if (xhr.readyState === 4) { 
                     const entries = performance.getEntriesByName(new URL(url, window.location.href).href);
-                    
                     if (entries.length > 0) {
-                        const entry = entries[entries.length - 1];
-                        // duration = całkowity czas (request + response)
-                        // responseStart - requestStart = czas samej sieci (Latency) bez pobierania body
-                        // W przypadku pustej odpowiedzi (204) duration jest prawie równe latency.
-                        const preciseDuration = entry.duration;
-                        resolve(preciseDuration);
+                        resolve(entries[entries.length - 1].duration);
                     } else {
-                        // Fallback do timera JS
-                        const endFallback = performance.now();
-                        resolve(endFallback - startFallback);
+                        resolve(performance.now() - startFallback);
                     }
                 }
             };
@@ -182,39 +177,26 @@ export async function runPing() {
         });
     };
 
-    // 1. WARMUP
+    // Warmup
     try { await pingRequest(`/api/ping?warmup=${Date.now()}`); } catch(e) {}
 
-    // 2. MEASUREMENT LOOP
     for(let i=0; i<PING_COUNT; i++) {
-        // Ważne: Unikalny URL, żeby Resource Timing API utworzyło nowy wpis
         const url = `/api/ping?t=${Date.now()}_${i}`;
-        
-        // Czyścimy bufor, żeby nie szukać w starych wpisach
         performance.clearResourceTimings();
 
         try {
             const duration = await pingRequest(url);
-            
-            // Filtrujemy piki (garbage collector)
-            if (duration < 200) {
-                pings.push(duration);
-            }
-            // Bardzo krótka pauza (5ms) - chcemy bombardować serwer jak 'ping -f'
+            if (duration < 200) pings.push(duration);
             await new Promise(r => setTimeout(r, 5));
-        } catch(e) {
-            console.warn("Ping failed", e);
-        }
+        } catch(e) {}
     }
 
     if (pings.length === 0) return 0;
 
-    // OpenSpeedTest logic: Najniższy wynik to 'Latency', średnia to 'Jitter' (pośrednio).
-    // W środowisku lokalnym (Docker) minPing powinien być teraz < 1ms lub ~1ms.
     const minPing = Math.min(...pings);
     const avgPing = pings.reduce((a,b) => a+b, 0) / pings.length;
     
-    sendLogToDocker(`[Phase 1] Result: Min: ${minPing.toFixed(3)}ms (Avg: ${avgPing.toFixed(3)}ms)`);
+    sendLogToDocker(`[Phase 1] HTTP Result: Min: ${minPing.toFixed(3)}ms`);
     
     return minPing; 
 }
