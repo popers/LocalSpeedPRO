@@ -19,8 +19,6 @@ services:
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
-      # Sekret sesji powinien byc losowy w produkcji
-      - APP_SECRET=${APP_SECRET:-changeme_in_production_please}
     volumes:
       - ./app:/app
   
@@ -38,12 +36,10 @@ services:
     volumes:
       - mariadb_data:/var/lib/mysql
     healthcheck:
-      # FIX: Używamy mysqladmin ping zamiast healthcheck.sh
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p${DB_ROOT_PASSWORD} || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 10s
-
 volumes:
   mariadb_data:
