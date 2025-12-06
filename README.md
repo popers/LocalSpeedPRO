@@ -13,23 +13,23 @@ A lightweight, self-hosted network performance testing tool designed for Docker.
 ### Screenshots:
 **Dashboard**
 
-<img width="1204" height="1130" alt="dashboard" src="https://github.com/user-attachments/assets/d5060973-e491-49c9-a0c5-787c0fd99d09" />
+<img alt="dashboard" src="https://github.com/user-attachments/assets/d5060973-e491-49c9-a0c5-787c0fd99d09" />
 
 **OIDC Settings**
 
-<img width="1206" height="470" alt="oidc" src="https://github.com/user-attachments/assets/4e75f735-7561-4e0c-9f79-bb0a2b274746" />
+<img alt="oidc" src="https://github.com/user-attachments/assets/4e75f735-7561-4e0c-9f79-bb0a2b274746" />
 
 **Backup Settings**
 
-<img width="1197" height="909" alt="backup" src="https://github.com/user-attachments/assets/67ba92ef-0b98-450f-973e-2010d198efe2" />
+<img alt="backup" src="https://github.com/user-attachments/assets/67ba92ef-0b98-450f-973e-2010d198efe2" />
 
 **Login page**
 
-<img width="488" height="553" alt="login" src="https://github.com/user-attachments/assets/59de21d2-3d78-43af-98d3-b436b8bfd8e7" /> 
+<img alt="login" src="https://github.com/user-attachments/assets/59de21d2-3d78-43af-98d3-b436b8bfd8e7" /> 
 
 **Personalization**
 
-<img width="389" height="232" alt="personalization" src="https://github.com/user-attachments/assets/f0264238-8c2c-438a-b315-c47190efb896" />
+<img alt="personalization" src="https://github.com/user-attachments/assets/f0264238-8c2c-438a-b315-c47190efb896" />
 
 ### Docker Compose
 ```
