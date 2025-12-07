@@ -80,8 +80,8 @@ export async function saveSettings(newLang, newTheme, newUnit, newColor) {
     }
 }
 
-// ZMIANA: Dodano parametr mode
-export async function saveResult(ping, down, up, mode = "Multi") {
+// ZMIANA: Dodano nowe parametry (jitter, pingi obciążeniowe)
+export async function saveResult(ping, down, up, mode, jitter, pingDl, pingUl) {
     try {
         const currentTheme = document.body.getAttribute('data-theme') || 'dark';
         const res = await fetch('/api/history', {
@@ -90,10 +90,13 @@ export async function saveResult(ping, down, up, mode = "Multi") {
             body: JSON.stringify({ 
                 ping, 
                 download: down, 
-                upload: up, 
+                upload: up,
+                jitter: jitter,
+                ping_down: pingDl,
+                ping_up: pingUl,
                 lang, 
                 theme: currentTheme,
-                mode: mode // Przesyłamy tryb
+                mode: mode 
             })
         });
         

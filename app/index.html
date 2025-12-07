@@ -96,7 +96,6 @@
                     <span data-key="nav_measurements">Pomiary</span>
                 </a>
                 
-                <!-- ZMIANA: Link prowadzi do /settings zamiast settings.html -->
                 <a href="/settings" class="nav-link" id="nav-settings">
                     <span class="material-icons">settings</span>
                     <span data-key="nav_settings">Ustawienia</span>
@@ -109,10 +108,7 @@
                 <div class="gauge-section">
                     <canvas id="speed-gauge"></canvas>
                     
-                    <div class="ping-display">
-                        <span class="material-icons">network_check</span>
-                        <span id="ping-text">--</span> ms
-                    </div>
+                    <!-- USUNIĘTO: .ping-display stąd -->
 
                     <div class="controls-row">
                         <button id="mode-toggle" class="mode-switch" title="Zmień tryb połączenia">
@@ -130,6 +126,27 @@
                 </div>
 
                 <div class="stats-section">
+                    
+                    <!-- NOWOŚĆ: Sekcja Latencji (Ping & Jitter) -->
+                    <div class="latency-grid">
+                        <div class="latency-item">
+                            <span class="lat-label" data-key="lbl_ping_idle">Ping (Idle)</span>
+                            <span class="lat-val"><span id="ping-idle-val">--</span> <small>ms</small></span>
+                        </div>
+                        <div class="latency-item">
+                            <span class="lat-label" data-key="lbl_ping_dl">Ping (DL)</span>
+                            <span class="lat-val"><span id="ping-dl-val">--</span> <small>ms</small></span>
+                        </div>
+                        <div class="latency-item">
+                            <span class="lat-label" data-key="lbl_ping_ul">Ping (UL)</span>
+                            <span class="lat-val"><span id="ping-ul-val">--</span> <small>ms</small></span>
+                        </div>
+                        <div class="latency-item">
+                            <span class="lat-label" data-key="lbl_jitter">Jitter</span>
+                            <span class="lat-val"><span id="jitter-val">--</span> <small>ms</small></span>
+                        </div>
+                    </div>
+
                     <div class="stat-card" id="card-down">
                         <canvas id="chart-down" class="bg-chart"></canvas>
                         <div class="stat-content-wrapper">
@@ -181,7 +198,6 @@
                         </div>
                     </div>
                     
-                    <!-- NOWOŚĆ: Pasek akcji tylko dla mobile (checkbox zaznacz wszystko) -->
                     <div class="mobile-history-actions">
                         <label class="select-all-label">
                             <input type="checkbox" id="mobile-select-all-checkbox">
@@ -208,6 +224,13 @@
                                         <span data-key="table_ping">Ping</span>
                                         <span class="sort-icon material-icons">unfold_more</span>
                                     </th>
+                                    
+                                    <!-- NOWE KOLUMNY -->
+                                    <th class="sortable" data-sort="jitter">
+                                        <span data-key="table_jitter">Jitter</span>
+                                        <span class="sort-icon material-icons">unfold_more</span>
+                                    </th>
+                                    
                                     <th class="sortable" data-sort="download">
                                         <span data-key="table_down">Download</span>
                                         <span class="sort-icon material-icons">unfold_more</span>

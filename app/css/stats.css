@@ -4,10 +4,52 @@
     padding: 2rem; 
     display: flex;
     flex-direction: column;
-    justify-content: space-between; 
+    justify-content: flex-start; /* ZMIANA: Aby trzymać elementy od góry */
     gap: 1.5rem; 
 }
 
+/* NOWE: GRID DLA PINGU I JITTERA */
+.latency-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 0.5rem;
+}
+
+.latency-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Wycentrowane jak u Ookla */
+    justify-content: center;
+    background: transparent;
+    padding: 5px;
+}
+
+.lat-label {
+    font-size: 0.85rem;
+    opacity: 0.7;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 4px;
+    text-align: center;
+}
+
+.lat-val {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.lat-val small {
+    font-size: 0.8rem;
+    opacity: 0.6;
+    color: var(--text);
+    font-weight: 400;
+    margin-left: 2px;
+}
+
+
+/* KAFELKI */
 .stat-card {
     position: relative; 
     overflow: hidden;  
@@ -16,7 +58,8 @@
     border-radius: 20px; 
     transition: transform 0.2s;
     
-    flex: 1; 
+    /* ZMIANA: Stała wysokość lub elastyczność */
+    min-height: 140px; 
     display: flex;
     flex-direction: column;
     justify-content: center; 
@@ -58,10 +101,9 @@
     font-size: 4.5rem; 
     font-weight: 700; 
     line-height: 1; 
-    color: var(--text); /* Domyślny kolor tekstu */
+    color: var(--text); 
 }
 
-/* ZMIANA: Kolorujemy tylko liczby (spany z ID) */
 .stat-value span {
     color: var(--primary);
 }
@@ -70,7 +112,7 @@
     font-size: 1.5rem; 
     font-weight: 400; 
     opacity: 0.7; 
-    color: var(--text); /* Jednostki pozostają neutralne */
+    color: var(--text); 
 }
 
 .stat-label { 
@@ -81,8 +123,9 @@
 
 /* PRZYCISK START */
 .action-area { 
-    margin-top: 1rem; 
+    margin-top: auto; /* Dopychanie do dołu */
     text-align: center; 
+    padding-top: 1rem;
 }
 
 .btn-primary {
@@ -108,7 +151,6 @@
 }
 .btn-primary:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; filter: none; }
 
-/* --- ANIMACJA KROPEK (LOADING) --- */
 .btn-primary.loading {
     color: transparent; 
     pointer-events: none; 
@@ -174,4 +216,31 @@
              11px 0 0 4px var(--primary), 
              32px 0 0 4px var(--primary);
     }
+}
+
+/* RESPANSYWNOŚĆ DLA LATENCY GRID */
+@media (max-width: 600px) {
+    .latency-grid {
+        grid-template-columns: repeat(4, 1fr); /* ZMIANA: 4 kolumny w jednym wierszu także na mobile */
+        gap: 5px; /* Mniejszy odstęp, żeby się zmieściło */
+        margin-bottom: 1rem;
+    }
+    
+    .lat-val {
+        font-size: 1.1rem; /* Trochę mniejszy font wartości */
+    }
+
+    .lat-label {
+        font-size: 0.65rem; /* Mniejsze etykiety */
+        white-space: nowrap; /* Zapobiega łamaniu "Ping (Idle)" */
+        transform: scale(0.9); /* Opcjonalne skalowanie, jeśli bardzo ciasno */
+    }
+    
+    .stat-value {
+        font-size: 3rem;
+    }
+    
+    .stat-icon { padding: 12px; }
+    .stat-icon .material-icons { font-size: 32px; }
+    .stat-content-wrapper { gap: 1rem; }
 }

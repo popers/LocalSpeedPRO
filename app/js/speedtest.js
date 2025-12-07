@@ -58,6 +58,7 @@ async function runDownload(url) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 
+                // PRZYWRÓCONO: Logowanie wzrostu chunka
                 if (value.length > maxChunkLogged) {
                     maxChunkLogged = value.length;
                     if (maxChunkLogged > 64 * 1024) {
@@ -121,6 +122,7 @@ function runUpload(url, maxBufferSize, minBufferSize) {
                 currentSize *= 2;
                 if (currentSize > maxBufferSize) currentSize = maxBufferSize;
                 
+                // PRZYWRÓCONO: Logowanie zmiany bufora uploadu
                 if (currentSize !== oldSize) {
                     self.postMessage({ 
                         type: 'log', 
@@ -143,89 +145,149 @@ function runUpload(url, maxBufferSize, minBufferSize) {
 }
 `;
 
-// --- PHASE 1: PURE WEBSOCKET PING ---
+// --- PING HELPER ---
+function calculateJitter(pings) {
+    if (pings.length < 2) return 0;
+    let differences = 0;
+    for (let i = 1; i < pings.length; i++) {
+        differences += Math.abs(pings[i] - pings[i-1]);
+    }
+    return differences / (pings.length - 1);
+}
+
+// --- PHASE 1: IDLE PING & JITTER ---
 export function runPing() {
     return new Promise((resolve, reject) => {
-        sendLogToDocker(`[Phase 1] Starting WebSocket Ping...`);
+        sendLogToDocker(`[Phase 1] Starting WebSocket Ping (Idle)...`);
         
-        // Wykrywamy protokół (ws lub wss)
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.host;
         const wsUrl = `${protocol}//${host}/api/ws/ping`;
 
         let ws = new WebSocket(wsUrl);
         
-        const SAMPLES = 20; // Liczba próbek pomiarowych
-        const WARMUP = 5;   // Liczba próbek rozgrzewkowych
+        const SAMPLES = 20; 
+        const WARMUP = 5;   
         
         let pings = [];
         let count = 0;
         let startTime = 0;
 
         ws.onopen = () => {
-            sendLogToDocker(`[Phase 1] WebSocket connected. Warming up...`);
-            // Start Pingu
             sendPing();
         };
 
         const sendPing = () => {
+            if(ws.readyState !== WebSocket.OPEN) return;
             startTime = performance.now();
-            // Wysyłamy cokolwiek, np. timestamp, żeby serwer miał co odbić
-            if(ws.readyState === WebSocket.OPEN) {
-                ws.send(startTime.toString());
-            }
+            ws.send(startTime.toString());
         };
 
         ws.onmessage = (event) => {
             const now = performance.now();
             const latency = now - startTime;
             
-            // Logika rozgrzewki i pomiaru
             if (count < WARMUP) {
-                // Rozgrzewka (nie zapisujemy wyniku)
                 count++;
-                sendPing();
+                setTimeout(sendPing, 50); // Małe opóźnienie między pingami
             } else if (count < WARMUP + SAMPLES) {
-                // Właściwy pomiar
                 pings.push(latency);
                 count++;
-                sendPing();
+                setTimeout(sendPing, 50);
             } else {
-                // Koniec testu
                 ws.close();
             }
         };
 
         ws.onclose = () => {
             if (pings.length > 0) {
-                // Wybieramy MINIMUM jako najbardziej wiarygodne opóźnienie (najmniej zakłóceń)
                 const minPing = Math.min(...pings);
                 const avgPing = pings.reduce((a,b) => a+b, 0) / pings.length;
+                const jitter = calculateJitter(pings);
                 
-                sendLogToDocker(`[Phase 1] WS Ping Result: Min=${minPing.toFixed(2)}ms (Avg=${avgPing.toFixed(2)}ms)`);
-                resolve(minPing);
+                sendLogToDocker(`[Phase 1] Result: Min=${minPing.toFixed(2)}, Avg=${avgPing.toFixed(2)}, Jitter=${jitter.toFixed(2)}`);
+                
+                // Zwracamy obiekt z wynikami
+                resolve({ ping: minPing, jitter: jitter });
             } else {
-                sendLogToDocker(`[Phase 1] WebSocket closed without results.`);
-                // Fallback do 0 (lub można tu zaimplementować fallback do HTTP, ale user chciał "tylko WS")
-                resolve(0);
+                resolve({ ping: 0, jitter: 0 });
             }
         };
 
         ws.onerror = (err) => {
-            sendLogToDocker(`[Phase 1] WebSocket Error. Fallback?`);
             console.error("WS Ping Error", err);
-            // W razie błędu WS zwracamy 0 lub rzucamy błąd
-            resolve(0); 
+            resolve({ ping: 0, jitter: 0 }); 
         };
         
-        // Timeout bezpieczeństwa (gdyby WebSocket zawisł)
         setTimeout(() => {
-            if (ws.readyState !== WebSocket.CLOSED) {
-                ws.close();
-            }
+            if (ws.readyState !== WebSocket.CLOSED) ws.close();
         }, 5000);
     });
 }
+
+// --- LOADED PING RUNNER (Ping w tle) ---
+export class LoadedPingRunner {
+    constructor(onUpdate) {
+        this.pings = [];
+        this.isRunning = false;
+        this.ws = null;
+        this.onUpdate = onUpdate;
+        this.startTime = 0;
+    }
+
+    start() {
+        this.isRunning = true;
+        this.pings = [];
+        
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        const wsUrl = `${protocol}//${host}/api/ws/ping`;
+        
+        this.ws = new WebSocket(wsUrl);
+
+        this.ws.onopen = () => {
+            this.sendPing();
+        };
+
+        this.ws.onmessage = () => {
+            if (!this.isRunning) return;
+            const now = performance.now();
+            const latency = now - this.startTime;
+            this.pings.push(latency);
+            
+            // Raportuj najnowszy ping
+            if (this.onUpdate) this.onUpdate(latency);
+
+            // Następny ping za 1000ms (1s)
+            setTimeout(() => this.sendPing(), 1000);
+        };
+
+        this.ws.onerror = () => {
+            // Cicha porażka w tle
+        };
+    }
+
+    sendPing() {
+        if (!this.isRunning || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+        this.startTime = performance.now();
+        this.ws.send("ping");
+    }
+
+    stop() {
+        this.isRunning = false;
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+        }
+        
+        if (this.pings.length === 0) return 0;
+        
+        // Zwracamy średni ping pod obciążeniem
+        const avg = this.pings.reduce((a,b) => a+b, 0) / this.pings.length;
+        return avg;
+    }
+}
+
 
 // --- ENGINE ---
 class SpeedTestEngine {
@@ -267,6 +329,7 @@ class SpeedTestEngine {
         
         worker.onerror = (err) => {
              console.error(`Worker ${id} error:`, err);
+             // PRZYWRÓCONO: Logowanie błędu workera
              sendLogToDocker(`[Worker ${id}] ERROR: ${err.message}`);
         };
 
@@ -277,6 +340,7 @@ class SpeedTestEngine {
                     this.workerResults.set(id, e.data.bytes);
                 }
             } 
+            // PRZYWRÓCONO: Obsługa logów z workera
             else if (e.data.type === 'log') {
                 const msg = `[Worker ${id}] ${e.data.text.replace('[Worker] ', '')}`;
                 sendLogToDocker(msg);
@@ -313,6 +377,7 @@ class SpeedTestEngine {
             this.workerResults.set(id, 0);
         }
         
+        // PRZYWRÓCONO: Logowanie dodania workera
         sendLogToDocker(`[Engine] Worker added (ID: ${id}). Target: ${config.url}`);
     }
 
@@ -321,6 +386,7 @@ class SpeedTestEngine {
         const workerObj = this.activeWorkers.pop(); 
         if (workerObj) {
             workerObj.worker.terminate();
+            // PRZYWRÓCONO: Logowanie usunięcia workera
             sendLogToDocker(`[Engine] Worker killed (ID: ${workerObj.id}).`);
         }
     }
@@ -331,6 +397,7 @@ class SpeedTestEngine {
         this.uiSpeed = 0;
         this.prevUiSpeed = 0;
 
+        // PRZYWRÓCONO: Logowanie startu
         sendLogToDocker(`[Engine] Starting ${this.type.toUpperCase()} test. Threads: ${this.startThreads}->${this.maxThreads}`);
 
         if(el('thread-badge')) el('thread-badge').style.opacity = '1';
@@ -342,6 +409,7 @@ class SpeedTestEngine {
         setTimeout(() => {
             if(this.status === 'warmup' && this.maxThreads > 1) {
                 this.status = 'scaling';
+                // PRZYWRÓCONO: Logowanie zmiany fazy
                 sendLogToDocker(`[Engine] Phase change: Warmup -> Scaling`);
             }
         }, 800);
@@ -441,6 +509,7 @@ class SpeedTestEngine {
             if (this.activeWorkers.length < this.maxThreads) {
                 this.addWorker();
                 this.stableCount = 0; 
+                // PRZYWRÓCONO: Logowanie force ramp-up
                 if (forceScaling) {
                     sendLogToDocker(`[Engine] 🚀 Force Ramp-up (Stable but < 4 threads). Speed: ${this.currentInstantSpeed.toFixed(0)} Mbps`);
                 }
@@ -450,6 +519,7 @@ class SpeedTestEngine {
         } 
         else if (isCrash) {
             if (this.currentInstantSpeed > 50) {
+                // PRZYWRÓCONO: Logowanie zatłoczenia
                 sendLogToDocker(`[Engine] 🛑 Congestion detected (Drop ${(growth*100).toFixed(1)}%).`);
                 this.removeLastWorker();
                 this.status = 'sustain'; 
@@ -458,6 +528,7 @@ class SpeedTestEngine {
         else {
             this.stableCount++;
             if (this.stableCount >= 5) {
+                // PRZYWRÓCONO: Logowanie plateau
                 sendLogToDocker(`[Engine] 📊 Plateau detected.`);
                 this.status = 'sustain';
             }
@@ -468,6 +539,7 @@ class SpeedTestEngine {
     stop() {
         clearInterval(this.timer);
         clearInterval(this.processTimer);
+        // PRZYWRÓCONO: Logowanie zakończenia
         sendLogToDocker(`[Engine] Test finished. Threads active: ${this.activeWorkers.length}`);
         if(el('thread-badge')) el('thread-badge').style.opacity = '0.5';
         this.activeWorkers.forEach(w => w.worker.terminate());
@@ -484,6 +556,12 @@ export function runDownload() {
         const engine = new SpeedTestEngine('download', maxT);
         const currentGauge = getGaugeInstance();
 
+        // Uruchamiamy Ping w tle
+        const pingRunner = new LoadedPingRunner((latency) => {
+            el('ping-dl-val').innerText = latency.toFixed(0);
+        });
+        pingRunner.start();
+
         engine.start(
             (speed, rawSpeed, duration, activeThreads) => {
                 checkGaugeRange(Math.max(speed, rawSpeed)); 
@@ -495,8 +573,9 @@ export function runDownload() {
                 updateChart('down', speed);
             },
             (finalSpeed) => {
+                const avgLoadedPing = pingRunner.stop(); // Zatrzymujemy ping
                 setLastResultDown(finalSpeed);
-                resolve(finalSpeed);
+                resolve({ speed: finalSpeed, ping: avgLoadedPing });
             }
         );
     });
@@ -511,6 +590,12 @@ export function runUpload() {
         const engine = new SpeedTestEngine('upload', maxT);
         const currentGauge = getGaugeInstance();
 
+        // Uruchamiamy Ping w tle
+        const pingRunner = new LoadedPingRunner((latency) => {
+            el('ping-ul-val').innerText = latency.toFixed(0);
+        });
+        pingRunner.start();
+
         engine.start(
             (speed, rawSpeed, duration, activeThreads) => {
                 checkGaugeRange(Math.max(speed, rawSpeed));
@@ -522,8 +607,9 @@ export function runUpload() {
                 updateChart('up', speed);
             },
             (finalSpeed) => {
+                const avgLoadedPing = pingRunner.stop();
                 setLastResultUp(finalSpeed);
-                resolve(finalSpeed);
+                resolve({ speed: finalSpeed, ping: avgLoadedPing });
             }
         );
     });

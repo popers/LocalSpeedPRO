@@ -391,18 +391,18 @@ tr.selected {
         order: 4; 
     }
 
-    /* --- WYNIKI: PING, DOWNLOAD, UPLOAD --- */
+    /* --- WYNIKI: UKŁAD 2x2 --- */
+    /* 4: Ping, 5: Jitter, 6: Down, 7: Up */
     
     td:nth-child(4), /* Ping */
-    td:nth-child(5), /* Down */
-    td:nth-child(6)  /* Up */ {
+    td:nth-child(5), /* Jitter */
+    td:nth-child(6), /* Down */
+    td:nth-child(7)  /* Up */ {
         order: 5;
-        width: 33.33%; 
+        width: 50%; /* ZMIANA: 50% dla układu 2x2 */
         text-align: center;
         padding-bottom: 12px;
         display: flex;
-        /* ZMIANA: Zamiast column-reverse używamy normalnego column,
-           ponieważ etykiety są teraz w HTML na początku komórki */
         flex-direction: column; 
         align-items: center;
         justify-content: center;
@@ -410,14 +410,20 @@ tr.selected {
         font-weight: 700;
     }
 
-    /* ZMIANA: Usunięcie etykiet z CSS content */
+    /* Poprawka dla Pingu w wersji rozszerzonej - mniejszy font, żeby się zmieściło */
+    td:nth-child(4) .history-value {
+        font-size: 0.85rem; 
+        white-space: nowrap;
+        letter-spacing: -0.5px;
+    }
+
     td:nth-child(4)::after,
     td:nth-child(5)::after,
-    td:nth-child(6)::after {
+    td:nth-child(6)::after,
+    td:nth-child(7)::after {
         content: none;
     }
 
-    /* ZMIANA: Stylizacja etykiet HTML (które są widoczne tylko na mobile) */
     .mobile-label {
         display: block;
         font-size: 0.7rem;

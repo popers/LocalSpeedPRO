@@ -22,19 +22,26 @@ def ensure_results_columns():
         columns_info = inspector.get_columns("results")
         existing_columns = [col['name'] for col in columns_info]
         
-        if "mode" not in existing_columns:
-            logger.info("Migracja: Dodawanie kolumny 'mode' do tabeli results...")
-            try:
-                with engine.connect() as connection:
-                    # SQLite i MySQL wspierają ADD COLUMN
-                    connection.execute(text(f"ALTER TABLE results ADD COLUMN mode VARCHAR(10) DEFAULT 'Multi'"))
-                    connection.commit()
-            except Exception as ex:
-                logger.error(f"Błąd dodawania kolumny mode: {ex}")
+        # Helper do dodawania kolumn
+        def add_col(name, type_def):
+            if name not in existing_columns:
+                logger.info(f"Migracja: Dodawanie kolumny '{name}' do tabeli results...")
+                try:
+                    with engine.connect() as connection:
+                        connection.execute(text(f"ALTER TABLE results ADD COLUMN {name} {type_def}"))
+                        connection.commit()
+                except Exception as ex:
+                    logger.error(f"Błąd dodawania kolumny {name}: {ex}")
+
+        add_col("mode", "VARCHAR(10) DEFAULT 'Multi'")
+        add_col("jitter", "FLOAT DEFAULT 0.0")
+        add_col("ping_download", "FLOAT DEFAULT 0.0")
+        add_col("ping_upload", "FLOAT DEFAULT 0.0")
+
     except Exception as e:
         logger.error(f"Błąd migracji results: {e}")
 
-# Wywołujemy migrację przy imporcie modułu (lub pierwszym użyciu)
+# Wywołujemy migrację przy imporcie modułu
 ensure_results_columns()
 
 @router.get("/api/history")
@@ -52,7 +59,8 @@ def read_history(
     if sort_by == 'ping': sort_column = SpeedResult.ping
     elif sort_by == 'download': sort_column = SpeedResult.download
     elif sort_by == 'upload': sort_column = SpeedResult.upload
-    elif sort_by == 'mode': sort_column = SpeedResult.mode # Sortowanie po trybie
+    elif sort_by == 'mode': sort_column = SpeedResult.mode
+    elif sort_by == 'jitter': sort_column = SpeedResult.jitter
     
     sort_func = desc if order == 'desc' else asc
 
@@ -83,12 +91,15 @@ async def save_result(request: Request, db: Session = Depends(get_db)):
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         new_result = SpeedResult(
-            ping=data['ping'],
-            download=data['download'],
-            upload=data['upload'],
+            ping=data.get('ping', 0),
+            download=data.get('download', 0),
+            upload=data.get('upload', 0),
+            jitter=data.get('jitter', 0),           # NOWE
+            ping_download=data.get('ping_down', 0), # NOWE
+            ping_upload=data.get('ping_up', 0),     # NOWE
             lang=data.get('lang', 'pl'),
             theme=data.get('theme', 'dark'),
-            mode=data.get('mode', 'Multi'), # Zapisujemy tryb
+            mode=data.get('mode', 'Multi'),
             date=now_str
         )
         db.add(new_result)
@@ -113,8 +124,11 @@ async def delete_results(ids: List[int] = Body(...), db: Session = Depends(get_d
 def export_history_csv(
     unit: str = 'mbps', 
     h_date: str = 'Date', 
-    h_mode: str = 'Mode', # Nowy nagłówek
+    h_mode: str = 'Mode',
     h_ping: str = 'Ping',
+    h_jitter: str = 'Jitter',
+    h_ping_dl: str = 'Ping DL',
+    h_ping_up: str = 'Ping UL',
     h_down: str = 'Download', 
     h_up: str = 'Upload', 
     db: Session = Depends(get_db)
@@ -129,17 +143,34 @@ def export_history_csv(
         unit_label = 'MB/s' if is_mbs else 'Mbps'
         
         # Zaktualizowany nagłówek CSV
-        writer.writerow([h_date, h_mode, f'{h_ping} (ms)', f'{h_down} ({unit_label})', f'{h_up} ({unit_label})'])
+        writer.writerow([
+            h_date, 
+            h_mode, 
+            f'{h_ping} (ms)', 
+            f'{h_jitter} (ms)',
+            f'{h_ping_dl} (ms)',
+            f'{h_ping_up} (ms)',
+            f'{h_down} ({unit_label})', 
+            f'{h_up} ({unit_label})'
+        ])
         
         for row in results:
             down_val = row.download / 8.0 if is_mbs else row.download
             up_val = row.upload / 8.0 if is_mbs else row.upload
             mode_val = row.mode if row.mode else "Multi"
             
+            # Bezpieczne pobieranie wartości (dla starych rekordów mogą być None/0)
+            jit = row.jitter if row.jitter else 0.0
+            p_dl = row.ping_download if row.ping_download else 0.0
+            p_up = row.ping_upload if row.ping_upload else 0.0
+
             writer.writerow([
                 row.date, 
                 mode_val,
                 f"{row.ping:.2f}", 
+                f"{jit:.2f}",
+                f"{p_dl:.2f}",
+                f"{p_up:.2f}",
                 f"{down_val:.2f}", 
                 f"{up_val:.2f}"
             ])

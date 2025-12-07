@@ -18,9 +18,18 @@ export const translations = {
         down: "Pobieranie", 
         up: "Wysyłanie", 
         
+        // NOWE ETYKIETY
+        lbl_ping_idle: "Ping (Idle)",
+        lbl_ping_dl: "Ping (DL)",
+        lbl_ping_ul: "Ping (UL)",
+        lbl_jitter: "Jitter",
+
         table_date: "Data",
         table_mode: "Tryb",
         table_ping: "Ping",
+        table_jitter: "Jitter",
+        table_ping_dl: "Ping DL",
+        table_ping_up: "Ping UL",
         table_down: "Pobieranie",
         table_up: "Wysyłanie",
         rows_label: "Na stronę:",
@@ -36,7 +45,6 @@ export const translations = {
         gauge_title: "PRĘDKOŚĆ",
         lbl_threads: "Wątki:", 
         
-        // ZMIANA: Polskie tłumaczenia trybów
         mode_single: "Pojedyncze",
         mode_multi: "Wiele",
         msg_mode_single: "Tryb połączenia: Pojedyncze",
@@ -129,9 +137,17 @@ export const translations = {
         down: "Download", 
         up: "Upload", 
         
+        lbl_ping_idle: "Ping (Idle)",
+        lbl_ping_dl: "Ping (DL)",
+        lbl_ping_ul: "Ping (UL)",
+        lbl_jitter: "Jitter",
+        
         table_date: "Date",
         table_mode: "Mode",
         table_ping: "Ping",
+        table_jitter: "Jitter",
+        table_ping_dl: "Ping DL",
+        table_ping_up: "Ping UL",
         table_down: "Download",
         table_up: "Upload",
         rows_label: "Per page:",

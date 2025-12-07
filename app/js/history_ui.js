@@ -16,15 +16,14 @@ function renderHistoryTable(data) {
     const tbody = el('history-table').querySelector('tbody');
     tbody.innerHTML = '';
     
-    // Resetuj oba checkboxy główne (desktop i mobile)
     const masterCheckbox = el('select-all-checkbox');
     const mobileMasterCheckbox = el('mobile-select-all-checkbox');
     
     if(masterCheckbox) { masterCheckbox.checked = false; masterCheckbox.indeterminate = false; }
     if(mobileMasterCheckbox) { mobileMasterCheckbox.checked = false; }
 
-    // FIX: Pobieramy aktualne tłumaczenia, aby wstawić je przy renderowaniu
     const tPing = (translations[lang] && translations[lang]['table_ping']) || 'Ping';
+    const tJitter = (translations[lang] && translations[lang]['table_jitter']) || 'Jitter';
     const tDown = (translations[lang] && translations[lang]['table_down']) || 'Download';
     const tUp = (translations[lang] && translations[lang]['table_up']) || 'Upload';
 
@@ -45,7 +44,18 @@ function renderHistoryTable(data) {
             modeTitle = translations[lang]['mode_single'] || 'Single';
         }
 
-        // ZMIANA: Wstawiamy przetłumaczone etykiety do <span>
+        // --- FORMATOWANIE PINGU (Idle | DL | UL) ---
+        const pIdle = row.ping.toFixed(1);
+        const pDl = (row.ping_download || 0).toFixed(1);
+        const pUl = (row.ping_upload || 0).toFixed(1);
+        
+        // Budujemy HTML dla złożonego pingu.
+        // ZMIANA: Dodano 'color:var(--text)', aby nadpisać kolor primary z rodzica .history-value
+        const separatorStyle = "color:var(--text); opacity:0.4; margin:0 4px; font-weight:400;";
+        const pingDisplay = `${pIdle}<span style="${separatorStyle}">|</span>${pDl}<span style="${separatorStyle}">|</span>${pUl}`;
+
+        const rowJitter = row.jitter ? row.jitter.toFixed(1) : '-';
+
         tr.innerHTML = `
             <td class="checkbox-col">
                 <input type="checkbox" class="row-checkbox" data-id="${row.id}" ${isSelected ? 'checked' : ''}>
@@ -59,15 +69,25 @@ function renderHistoryTable(data) {
                 </div>
             </td>
 
+            <!-- PING (Złożony) -->
             <td>
                 <span class="mobile-label" data-key="table_ping">${tPing}</span>
-                <span class="history-value">${row.ping.toFixed(1)}</span><span class="mobile-unit">ms</span>
+                <span class="history-value">${pingDisplay}</span><span class="mobile-unit">ms</span>
+            </td>
+
+            <!-- JITTER -->
+            <td>
+                <span class="mobile-label" data-key="table_jitter">${tJitter}</span>
+                <span class="history-value">${rowJitter}</span><span class="mobile-unit">ms</span>
             </td>
             
+            <!-- DOWNLOAD -->
             <td>
                 <span class="mobile-label" data-key="table_down">${tDown}</span>
                 <span class="history-value">${formatSpeed(row.download)}</span><span class="mobile-unit">${getUnitLabel()}</span>
             </td>
+            
+            <!-- UPLOAD -->
             <td>
                 <span class="mobile-label" data-key="table_up">${tUp}</span>
                 <span class="history-value">${formatSpeed(row.upload)}</span><span class="mobile-unit">${getUnitLabel()}</span>
@@ -273,6 +293,9 @@ export function initHistoryEvents() {
             h_date: t.table_date,
             h_mode: t.table_mode || 'Mode',
             h_ping: t.table_ping,
+            h_jitter: t.table_jitter || 'Jitter',
+            h_ping_dl: t.table_ping_dl || 'Ping DL',
+            h_ping_up: t.table_ping_up || 'Ping UL',
             h_down: t.table_down, 
             h_up: t.table_up
         });

@@ -53,67 +53,66 @@ async function startTest() {
     btn.disabled = true;
     btn.classList.add('loading'); 
     
+    // Reset wartości UI
+    el('ping-idle-val').innerText = '--';
+    el('ping-dl-val').innerText = '--';
+    el('ping-ul-val').innerText = '--';
+    el('jitter-val').innerText = '--';
+    el('down-val').innerText = '--';
+    el('up-val').innerText = '--';
+
     try { reloadGauge(); } catch(e) { console.warn("Gauge error:", e); }
     try { resetCharts(); } catch(e) { console.warn("Charts error:", e); }
 
-    let ping = 0, down = 0, up = 0;
+    let pingResults = { ping: 0, jitter: 0 };
+    let downResult = { speed: 0, ping: 0 };
+    let upResult = { speed: 0, ping: 0 };
 
     try {
         log(translations[lang].log_start);
         await new Promise(r => setTimeout(r, 800));
 
-        // 1. PING
-        ping = await Promise.race([runPing(), timeout(3000)]);
-        if (typeof ping !== 'number') throw new Error("Ping timeout");
-        el('ping-text').textContent = ping.toFixed(1);
+        // 1. PING IDLE & JITTER
+        // runPing zwraca teraz obiekt {ping, jitter}
+        pingResults = await Promise.race([runPing(), timeout(4000)]);
+        if (!pingResults) throw new Error("Ping error");
+
+        el('ping-idle-val').textContent = pingResults.ping.toFixed(1);
+        el('jitter-val').textContent = pingResults.jitter.toFixed(1);
 
         // 2. DOWNLOAD
         el('card-down').classList.add('active');
-        down = await Promise.race([runDownload(), timeout(TEST_DURATION + 1000)]); 
-        el('down-val').textContent = formatSpeed(down); 
+        // runDownload zwraca teraz {speed, ping}
+        downResult = await Promise.race([runDownload(), timeout(TEST_DURATION + 1000)]); 
+        el('down-val').textContent = formatSpeed(downResult.speed); 
+        el('ping-dl-val').textContent = downResult.ping.toFixed(1);
         el('card-down').classList.remove('active');
 
         await new Promise(r => setTimeout(r, 200)); 
-
-        let currentGauge = getGaugeInstance();
-        if (currentGauge) {
-            setIsResetting(true); 
-            currentGauge.update({ animationDuration: 1200 });
-            await new Promise(r => setTimeout(r, 20));
-            currentGauge.value = 0;
-        }
-        
-        await new Promise(r => setTimeout(r, 1200)); 
-        setIsResetting(false); 
-        
-        currentGauge = getGaugeInstance();
-        if (currentGauge) currentGauge.update({ animationDuration: 100 }); 
+        resetGauge();
 
         // 3. UPLOAD
         el('card-up').classList.add('active');
-        up = await Promise.race([runUpload(), timeout(TEST_DURATION + 1000)]);
-        el('up-val').textContent = formatSpeed(up);
+        // runUpload zwraca teraz {speed, ping}
+        upResult = await Promise.race([runUpload(), timeout(TEST_DURATION + 1000)]);
+        el('up-val').textContent = formatSpeed(upResult.speed);
+        el('ping-ul-val').textContent = upResult.ping.toFixed(1);
         el('card-up').classList.remove('active');
 
         await new Promise(r => setTimeout(r, 200)); 
+        resetGauge();
 
-        currentGauge = getGaugeInstance();
-        if (currentGauge) {
-            setIsResetting(true); 
-            currentGauge.update({ animationDuration: 1200 });
-            await new Promise(r => setTimeout(r, 20));
-            currentGauge.value = 0;
-        }
-        
-        await new Promise(r => setTimeout(r, 1200));
-        setIsResetting(false); 
-        
-        currentGauge = getGaugeInstance();
-        if (currentGauge) currentGauge.update({ animationDuration: 100 }); 
-
-        // 4. SAVE (Przekazujemy tryb)
+        // 4. SAVE (Zapisujemy wszystkie metryki)
         const currentMode = (THREADS > 1) ? "Multi" : "Single";
-        await saveResult(ping, down, up, currentMode); 
+        await saveResult(
+            pingResults.ping, 
+            downResult.speed, 
+            upResult.speed, 
+            currentMode,
+            pingResults.jitter,
+            downResult.ping,
+            upResult.ping
+        ); 
         
     } catch (error) {
         console.error("Błąd podczas testu:", error);
@@ -126,13 +125,23 @@ async function startTest() {
     } finally {
         btn.disabled = false;
         btn.classList.remove('loading'); 
-        
-        if (ping > 0 && down > 0 && up > 0) {
-            // Sukces obsłużony w data_sync
-        } else {
-            log(translations[lang].log_end + " Przycisk odblokowany.");
-        }
     }
+}
+
+async function resetGauge() {
+    let currentGauge = getGaugeInstance();
+    if (currentGauge) {
+        setIsResetting(true); 
+        currentGauge.update({ animationDuration: 1200 });
+        await new Promise(r => setTimeout(r, 20));
+        currentGauge.value = 0;
+    }
+    
+    await new Promise(r => setTimeout(r, 1200)); 
+    setIsResetting(false); 
+    
+    currentGauge = getGaugeInstance();
+    if (currentGauge) currentGauge.update({ animationDuration: 100 }); 
 }
 
 function initMenu() {
@@ -318,7 +327,6 @@ window.onload = () => {
         if (!modeToggle || !modeText) return;
         
         if (THREADS > 1) {
-            // FIX: Pobieramy tłumaczenie zamiast hardcodować string
             const key = 'mode_multi';
             const txt = (translations[lang] && translations[lang][key]) ? translations[lang][key] : "Multi";
             
@@ -326,7 +334,6 @@ window.onload = () => {
             modeText.setAttribute('data-key', key);
             modeToggle.querySelector('.material-icons').innerText = "hub";
         } else {
-            // FIX: Pobieramy tłumaczenie zamiast hardcodować string
             const key = 'mode_single';
             const txt = (translations[lang] && translations[lang][key]) ? translations[lang][key] : "Single";
             
@@ -336,14 +343,12 @@ window.onload = () => {
         }
     };
 
-    // Wywołujemy od razu po załadowaniu
     updateModeUI();
     
     if(modeToggle) {
         modeToggle.onclick = () => {
             if (THREADS > 1) {
                 setThreads(1);
-                // Logika powiadomień
                 const msg = translations[lang]['msg_mode_single'] || "Tryb: Pojedyncze połączenie";
                 log(msg);
             } else {

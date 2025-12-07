@@ -54,12 +54,20 @@ class SpeedResult(Base):
     __tablename__ = "results"
     id = Column(Integer, primary_key=True, index=True)
     date = Column(String(50))
-    ping = Column(Float)
+    
+    # Podstawowe wyniki
+    ping = Column(Float)      # Ping Idle (spoczynkowy)
     download = Column(Float)
     upload = Column(Float)
+    
+    # Nowe metryki jakości
+    jitter = Column(Float, default=0.0)
+    ping_download = Column(Float, default=0.0) # Ping podczas pobierania
+    ping_upload = Column(Float, default=0.0)   # Ping podczas wysyłania
+    
+    # Metadane
     lang = Column(String(10), default="en") 
     theme = Column(String(20), default="dark")
-    # NOWA KOLUMNA
     mode = Column(String(10), default="Multi") 
 
 class Settings(Base):
