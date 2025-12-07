@@ -44,11 +44,10 @@ async function runDownload(url) {
     let totalBytes = 0;
     let startTime = performance.now();
     let lastReport = startTime;
-    let maxChunkLogged = 0; // Do śledzenia wzrostu chunków
+    let maxChunkLogged = 0; 
 
     while (true) {
         try {
-            // Dodajemy losowy parametr t, aby uniknąć cache'owania przeglądarki
             const fetchUrl = url + (url.includes('?') ? '&' : '?') + 't=' + Math.random();
             const response = await fetch(fetchUrl, { cache: "no-store", keepalive: true });
             if (!response.body) return;
@@ -59,9 +58,6 @@ async function runDownload(url) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 
-                // --- LOGOWANIE WZROSTU CHUNKÓW (Monitorowanie bufora Download) ---
-                // Logujemy tylko, jeśli otrzymaliśmy większą paczkę niż dotychczas
-                // i jest ona znacząca (> 64KB), aby nie spamować logami na początku.
                 if (value.length > maxChunkLogged) {
                     maxChunkLogged = value.length;
                     if (maxChunkLogged > 64 * 1024) {
@@ -75,14 +71,12 @@ async function runDownload(url) {
                 totalBytes += value.length;
                 const now = performance.now();
                 
-                // ZMIANA: Częstsze raportowanie (50ms zamiast 100ms) dla płynniejszego wykresu
                 if (now - lastReport > 50) {
                     self.postMessage({ type: 'progress', bytes: totalBytes, time: now });
                     lastReport = now;
                 }
             }
         } catch (e) {
-            // Retry w pętli
         }
     }
 }
@@ -111,7 +105,6 @@ function runUpload(url, maxBufferSize, minBufferSize) {
                 lastLoaded = e.loaded;
                 
                 const now = performance.now();
-                // ZMIANA: Częstsze raportowanie (50ms zamiast 100ms)
                 if (now - lastReport > 50) {
                     self.postMessage({ type: 'progress', bytes: totalBytes, time: now });
                     lastReport = now;
@@ -123,13 +116,11 @@ function runUpload(url, maxBufferSize, minBufferSize) {
             const reqEnd = performance.now();
             const duration = reqEnd - reqStart;
 
-            // --- ALGORYTM ADAPTACYJNY BUFORA (Monitorowanie bufora Upload) ---
             if (duration < 50) {
                 const oldSize = currentSize;
                 currentSize *= 2;
                 if (currentSize > maxBufferSize) currentSize = maxBufferSize;
                 
-                // LOGOWANIE ZMIANY BUFORA
                 if (currentSize !== oldSize) {
                     self.postMessage({ 
                         type: 'log', 
@@ -152,67 +143,88 @@ function runUpload(url, maxBufferSize, minBufferSize) {
 }
 `;
 
-// --- PHASE 1: PRE-TEST (HYBRID ICMP / HTTP) ---
-export async function runPing() {
-    sendLogToDocker(`[Phase 1] Starting Ping Test...`);
+// --- PHASE 1: PURE WEBSOCKET PING ---
+export function runPing() {
+    return new Promise((resolve, reject) => {
+        sendLogToDocker(`[Phase 1] Starting WebSocket Ping...`);
+        
+        // Wykrywamy protokół (ws lub wss)
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        const wsUrl = `${protocol}//${host}/api/ws/ping`;
 
-    // --- KROK 1: Próba ICMP (Backend -> Client) ---
-    try {
-        const start = performance.now();
-        const res = await fetch('/api/ping_icmp');
-        if (res.ok) {
-            const data = await res.json();
-            if (data.ping && data.ping > 0) {
-                 sendLogToDocker(`[Phase 1] ICMP Result: ${data.ping} ms (Backend measured)`);
-                 return data.ping;
-            } else {
-                 sendLogToDocker(`[Phase 1] ICMP failed (Firewall/Docker?), falling back to HTTP...`);
+        let ws = new WebSocket(wsUrl);
+        
+        const SAMPLES = 20; // Liczba próbek pomiarowych
+        const WARMUP = 5;   // Liczba próbek rozgrzewkowych
+        
+        let pings = [];
+        let count = 0;
+        let startTime = 0;
+
+        ws.onopen = () => {
+            sendLogToDocker(`[Phase 1] WebSocket connected. Warming up...`);
+            // Start Pingu
+            sendPing();
+        };
+
+        const sendPing = () => {
+            startTime = performance.now();
+            // Wysyłamy cokolwiek, np. timestamp, żeby serwer miał co odbić
+            if(ws.readyState === WebSocket.OPEN) {
+                ws.send(startTime.toString());
             }
-        }
-    } catch (e) {
-        console.warn("ICMP Request failed", e);
-    }
+        };
 
-    // --- KROK 2: Fallback do HTTP ---
-    const PING_COUNT = 15; 
-    const pings = [];
-    
-    const pingRequest = (url) => {
-        return new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.open("GET", url, true);
-            const startFallback = performance.now();
-            xhr.onreadystatechange = () => {
-                if (xhr.readyState === 4) { 
-                    const entries = performance.getEntriesByName(new URL(url, window.location.href).href);
-                    if (entries.length > 0) {
-                        resolve(entries[entries.length - 1].duration);
-                    } else {
-                        resolve(performance.now() - startFallback);
-                    }
-                }
-            };
-            xhr.onerror = () => reject("XHR Error");
-            xhr.send();
-        });
-    };
+        ws.onmessage = (event) => {
+            const now = performance.now();
+            const latency = now - startTime;
+            
+            // Logika rozgrzewki i pomiaru
+            if (count < WARMUP) {
+                // Rozgrzewka (nie zapisujemy wyniku)
+                count++;
+                sendPing();
+            } else if (count < WARMUP + SAMPLES) {
+                // Właściwy pomiar
+                pings.push(latency);
+                count++;
+                sendPing();
+            } else {
+                // Koniec testu
+                ws.close();
+            }
+        };
 
-    try { await pingRequest(`/api/ping?warmup=${Date.now()}`); } catch(e) {}
+        ws.onclose = () => {
+            if (pings.length > 0) {
+                // Wybieramy MINIMUM jako najbardziej wiarygodne opóźnienie (najmniej zakłóceń)
+                const minPing = Math.min(...pings);
+                const avgPing = pings.reduce((a,b) => a+b, 0) / pings.length;
+                
+                sendLogToDocker(`[Phase 1] WS Ping Result: Min=${minPing.toFixed(2)}ms (Avg=${avgPing.toFixed(2)}ms)`);
+                resolve(minPing);
+            } else {
+                sendLogToDocker(`[Phase 1] WebSocket closed without results.`);
+                // Fallback do 0 (lub można tu zaimplementować fallback do HTTP, ale user chciał "tylko WS")
+                resolve(0);
+            }
+        };
 
-    for(let i=0; i<PING_COUNT; i++) {
-        const url = `/api/ping?t=${Date.now()}_${i}`;
-        performance.clearResourceTimings();
-        try {
-            const duration = await pingRequest(url);
-            if (duration < 200) pings.push(duration);
-            await new Promise(r => setTimeout(r, 5));
-        } catch(e) {}
-    }
-
-    if (pings.length === 0) return 0;
-    const minPing = Math.min(...pings);
-    sendLogToDocker(`[Phase 1] HTTP Result: Min: ${minPing.toFixed(3)}ms`);
-    return minPing; 
+        ws.onerror = (err) => {
+            sendLogToDocker(`[Phase 1] WebSocket Error. Fallback?`);
+            console.error("WS Ping Error", err);
+            // W razie błędu WS zwracamy 0 lub rzucamy błąd
+            resolve(0); 
+        };
+        
+        // Timeout bezpieczeństwa (gdyby WebSocket zawisł)
+        setTimeout(() => {
+            if (ws.readyState !== WebSocket.CLOSED) {
+                ws.close();
+            }
+        }, 5000);
+    });
 }
 
 // --- ENGINE ---
@@ -282,8 +294,6 @@ class SpeedTestEngine {
             maxBuf = 4 * 1024 * 1024; 
         }
 
-        // ZMIANA: URL dla downloadu wskazuje teraz na endpoint API generujący dane w RAM
-        // size=100 oznacza 100MB per request. W pętli worker i tak będzie to pobierał wielokrotnie.
         const downloadUrl = '/api/download?size=100'; 
         const uploadUrl = '/api/upload';
 
@@ -342,8 +352,6 @@ class SpeedTestEngine {
             }, this.monitorInterval);
         }
 
-        // --- ZMIANA: ZWIĘKSZONA PŁYNNOŚĆ (50ms = 20 FPS) ---
-        // Wcześniej 120ms powodowało, że wskazówka "skakała" przy szybkich zmianach.
         const UPDATE_INTERVAL = 50; 
 
         this.timer = setInterval(() => {
@@ -380,9 +388,6 @@ class SpeedTestEngine {
             this.lastTime = now;
             this.lastTotalBytes = totalBytes;
 
-            // ZMIANA: Usunięto warunek natychmiastowego startu dla lepszej płynności
-            // if (this.uiSpeed === 0) this.uiSpeed = avgSpeed;
-
             if (this.status === 'scaling' && avgSpeed < this.uiSpeed) {
                 avgSpeed = this.uiSpeed; 
             }
@@ -391,25 +396,18 @@ class SpeedTestEngine {
                 avgSpeed = this.uiSpeed;
             }
 
-            // --- TŁUMIENIE WSKAZÓWKI (SMOOTHING) ---
-            // ZMIANA: Zmniejszono faktor do 0.03 (z 0.06), ponieważ pętla działa teraz częściej (50ms vs 120ms).
-            // Dzięki temu zachowujemy bezwładność, ale zyskujemy płynność ruchu.
             let riseFactor = 0.12; 
             let fallFactor = 0.06; 
 
             const uiAlpha = (avgSpeed > this.uiSpeed) ? riseFactor : fallFactor;
             this.uiSpeed = (avgSpeed * uiAlpha) + (this.uiSpeed * (1 - uiAlpha));
 
-            // ZMIANA: Dostosowano dropLimit do częstszego odświeżania, aby wskazówka nie opadała zbyt szybko
             let dropLimit = (this.type === 'upload') ? 0.9995 : 0.998;
             
             if (this.uiSpeed < this.prevUiSpeed * dropLimit) {
                 this.uiSpeed = this.prevUiSpeed * dropLimit;
             }
 
-            // --- ZMIANA: OPÓŹNIENIE STARTU WSKAZÓWKI ---
-            // Pozwala skali (gauge) dostosować się do dużej prędkości (dzięki avgSpeed),
-            // zanim wskazówka (this.uiSpeed) zacznie się podnosić.
             const NEEDLE_DELAY_MS = 350;
             if (duration * 1000 < NEEDLE_DELAY_MS) {
                 this.uiSpeed = 0;
@@ -417,7 +415,6 @@ class SpeedTestEngine {
 
             this.prevUiSpeed = this.uiSpeed;
 
-            // ZMIANA: Przekazujemy również 'avgSpeed' jako surowy cel, aby UI mogło dostosować skalę
             onUpdate(this.uiSpeed, avgSpeed, duration, this.activeWorkers.length);
 
             if (duration * 1000 >= TEST_DURATION) {
@@ -489,8 +486,6 @@ export function runDownload() {
 
         engine.start(
             (speed, rawSpeed, duration, activeThreads) => {
-                // ZMIANA: Używamy większej wartości (wskazówka lub cel) do ustalenia skali.
-                // Dzięki temu, jeśli cel (rawSpeed) jest wysoki, skala od razu skoczy w górę.
                 checkGaugeRange(Math.max(speed, rawSpeed)); 
 
                 if(el('thread-count')) el('thread-count').innerText = activeThreads;
@@ -518,7 +513,6 @@ export function runUpload() {
 
         engine.start(
             (speed, rawSpeed, duration, activeThreads) => {
-                // ZMIANA: Analogicznie dla uploadu
                 checkGaugeRange(Math.max(speed, rawSpeed));
 
                 if(el('thread-count')) el('thread-count').innerText = activeThreads;
