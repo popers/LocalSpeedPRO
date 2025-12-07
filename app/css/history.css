@@ -80,7 +80,24 @@ h3 { margin: 0; font-size: 1.2rem; opacity: 0.8; }
     display: none;
 }
 
-/* TABELA I SORTOWANIE */
+/* DOMYŚLNIE UKRYTY CHECKBOX MOBILNY */
+.mobile-history-actions {
+    display: none;
+    padding-bottom: 10px;
+    margin-bottom: 5px;
+    border-bottom: 1px solid var(--border);
+}
+.select-all-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text);
+    opacity: 0.8;
+}
+
+/* TABELA I SORTOWANIE (DESKTOP) */
 .table-wrapper { 
     width: 100%;
     overflow-x: auto; 
@@ -236,16 +253,27 @@ tr.selected {
 
 /* --- STYLIZACJA JEDNOSTEK W TABELI --- */
 .mobile-unit {
-    margin-left: 4px; /* Odstęp na Desktopie */
+    margin-left: 4px; 
+    opacity: 0.7; 
+}
+
+/* ZMIANA: Klasa do kolorowania wartości w tabeli na desktopie */
+.history-value {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+/* ZMIANA: Domyślnie ukrywamy etykiety mobilne na desktopie */
+.mobile-label {
+    display: none;
 }
 
 /* --- STYLIZACJA KOLUMNY TRYB (MODE) --- */
 .mode-cell {
     display: flex;
-    /* ZMIANA: flex-flow wymusza, aby na desktopie nie łamało linii */
     flex-flow: row nowrap; 
     align-items: center;
-    justify-content: flex-start; /* Desktop: do lewej */
+    justify-content: flex-start; 
     gap: 5px;
     opacity: 0.8;
 }
@@ -259,29 +287,154 @@ tr.selected {
     white-space: nowrap; 
 }
 
-/* MOBILE: Jednostki pod spodem i Tryb pionowo */
+
+/* --- MOBILE-FIRST TABLE DESIGN (Cards) --- */
 @media (max-width: 900px) {
-    .mobile-unit {
+    .mobile-history-actions {
         display: block;
-        margin-left: 0;
-        font-size: 0.75rem;
-        opacity: 0.7;
-        line-height: 1.2;
+    }
+
+    table, thead, tbody, th, td, tr { 
+        display: block; 
+    }
+
+    thead { 
+        display: none; 
+    }
+
+    .table-wrapper {
+        overflow-x: visible; 
+        min-width: 0;
+    }
+
+    table {
+        min-width: 100%;
+    }
+
+    tr {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        padding: 0; 
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        display: flex;
+        flex-wrap: wrap; 
+        position: relative;
+    }
+
+    tr.selected {
+        background-color: rgba(98, 0, 234, 0.08);
+        border-color: var(--primary);
+    }
+
+    td {
+        border-bottom: none;
+        padding: 8px 10px;
+        box-sizing: border-box;
+    }
+
+    /* 1. Checkbox */
+    td:nth-child(1) {
+        width: 40px;
+        padding-top: 12px;
+        padding-left: 10px;
+        order: 1; 
+    }
+
+    /* 2. Data i Godzina */
+    td:nth-child(2) {
+        width: calc(100% - 130px); 
+        order: 2;
+        padding-top: 10px;
+        font-weight: 500;
+        font-size: 0.95rem;
+        line-height: 1.3;
+    }
+    td:nth-child(2) small {
+        display: block;
+        font-size: 0.8rem;
+        opacity: 0.6;
+        font-weight: 400;
         margin-top: 2px;
     }
 
-    /* Tryb pionowo na telefonach */
-    .mode-cell {
-        flex-direction: column;
-        justify-content: center;
-        align-items: flex-start; /* ZMIANA: Wyrównanie do lewej na mobile */
-        gap: 2px;
+    /* 3. Tryb */
+    td:nth-child(3) {
+        width: 90px;
+        order: 3;
+        display: flex;
+        align-items: flex-start;
+        justify-content: flex-end;
+        padding-top: 10px;
+        padding-right: 12px;
     }
-    
-    .mode-cell span {
-        font-size: 0.7rem;
-        line-height: 1;
+    .mode-cell {
+        flex-direction: row; 
+        gap: 4px;
+        background: rgba(128,128,128,0.1);
+        padding: 4px 8px;
+        border-radius: 12px;
+    }
+    .mode-cell .material-icons { font-size: 16px; }
+    .mode-cell span { font-size: 0.75rem; }
+
+    /* SEPARATOR */
+    tr::after {
+        content: '';
+        display: block;
+        width: 100%;
+        height: 1px;
+        background: var(--border);
+        opacity: 0.5;
+        margin: 5px 0;
+        order: 4; 
     }
 
-    /* USUNIĘTO: Centrowanie nagłówka, teraz wszystko jest do lewej */
+    /* --- WYNIKI: PING, DOWNLOAD, UPLOAD --- */
+    
+    td:nth-child(4), /* Ping */
+    td:nth-child(5), /* Down */
+    td:nth-child(6)  /* Up */ {
+        order: 5;
+        width: 33.33%; 
+        text-align: center;
+        padding-bottom: 12px;
+        display: flex;
+        /* ZMIANA: Zamiast column-reverse używamy normalnego column,
+           ponieważ etykiety są teraz w HTML na początku komórki */
+        flex-direction: column; 
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    /* ZMIANA: Usunięcie etykiet z CSS content */
+    td:nth-child(4)::after,
+    td:nth-child(5)::after,
+    td:nth-child(6)::after {
+        content: none;
+    }
+
+    /* ZMIANA: Stylizacja etykiet HTML (które są widoczne tylko na mobile) */
+    .mobile-label {
+        display: block;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        opacity: 0.6;
+        font-weight: 400;
+        margin-bottom: 2px;
+        letter-spacing: 0.5px;
+        color: var(--text);
+    }
+
+    .mobile-unit {
+        display: inline-block;
+        font-size: 0.7rem;
+        opacity: 0.7;
+        margin-left: 2px;
+        font-weight: 400;
+        color: var(--text);
+    }
 }

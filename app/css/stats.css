@@ -58,12 +58,21 @@
     font-size: 4.5rem; 
     font-weight: 700; 
     line-height: 1; 
+    color: var(--text); /* Domyślny kolor tekstu */
 }
+
+/* ZMIANA: Kolorujemy tylko liczby (spany z ID) */
+.stat-value span {
+    color: var(--primary);
+}
+
 .stat-value small { 
     font-size: 1.5rem; 
     font-weight: 400; 
     opacity: 0.7; 
+    color: var(--text); /* Jednostki pozostają neutralne */
 }
+
 .stat-label { 
     font-size: 1.4rem; 
     opacity: 0.8; 
@@ -77,9 +86,8 @@
 }
 
 .btn-primary {
-    /* ZMIANA: Usuwamy gradient z hardcodowanym fioletem. Używamy czystego --primary */
     background: var(--primary);
-    color: white; /* Zakładamy, że na kolorze wiodącym biały jest czytelny. Można by dodać color-contrast jeśli mamy PostCSS */
+    color: white; 
     border: none; 
     padding: 1.2rem 5rem; 
     font-size: 1.4rem; 
@@ -87,10 +95,7 @@
     cursor: pointer; 
     font-weight: 700; 
     letter-spacing: 1px;
-    
-    /* ZMIANA: Cień używa teraz dynamicznego RGB */
     box-shadow: 0 5px 15px rgba(var(--primary-rgb), 0.3); 
-    
     transition: 0.3s;
     width: 100%; 
     max-width: 350px;
@@ -98,9 +103,7 @@
 }
 .btn-primary:hover { 
     transform: translateY(-2px); 
-    /* ZMIANA: Cień */
     box-shadow: 0 8px 20px rgba(var(--primary-rgb), 0.4); 
-    /* Opcjonalnie: Lekkie rozjaśnienie/przyciemnienie na hover filtrem */
     filter: brightness(1.1);
 }
 .btn-primary:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; filter: none; }

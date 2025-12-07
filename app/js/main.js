@@ -14,7 +14,7 @@ import {
     timeout 
 } from '/js/utils.js';
 import { translations, TEST_DURATION, THREADS, setThreads } from '/js/config.js';
-import { initGauge, reloadGauge, getGaugeInstance, setIsResetting } from '/js/gauge.js'; // ZMIANA: Import setIsResetting
+import { initGauge, reloadGauge, getGaugeInstance, setIsResetting } from '/js/gauge.js'; 
 import { initCharts, resetCharts } from '/js/charts.js';
 import { loadSettings, saveSettings, saveResult } from '/js/data_sync.js';
 import { initHistoryEvents, loadHistory, updateStatTiles } from '/js/history_ui.js';
@@ -52,14 +52,9 @@ async function startTest() {
     
     btn.disabled = true;
     btn.classList.add('loading'); 
-
-    // Usunięto reset speed-value, bo elementu już nie ma
     
     try { reloadGauge(); } catch(e) { console.warn("Gauge error:", e); }
     try { resetCharts(); } catch(e) { console.warn("Charts error:", e); }
-
-    // ZMIANA: Nie pobieramy gaugeInstance tutaj do zmiennej lokalnej,
-    // bo może ona stać się nieaktualna w trakcie testu.
 
     let ping = 0, down = 0, up = 0;
 
@@ -80,13 +75,10 @@ async function startTest() {
 
         await new Promise(r => setTimeout(r, 200)); 
 
-        // ZMIANA: Pobieramy aktualną instancję tuż przed użyciem
         let currentGauge = getGaugeInstance();
         if (currentGauge) {
             setIsResetting(true); 
-            // FIX: Rozdzielamy update konfiguracji i ustawienie wartości
             currentGauge.update({ animationDuration: 1200 });
-            // DODANO: Krótka pauza (20ms), aby upewnić się, że update został przetworzony przed zmianą wartości
             await new Promise(r => setTimeout(r, 20));
             currentGauge.value = 0;
         }
@@ -94,7 +86,6 @@ async function startTest() {
         await new Promise(r => setTimeout(r, 1200)); 
         setIsResetting(false); 
         
-        // Ponowne pobranie, na wypadek gdyby reloadGauge zadziałał w trakcie czekania
         currentGauge = getGaugeInstance();
         if (currentGauge) currentGauge.update({ animationDuration: 100 }); 
 
@@ -106,13 +97,10 @@ async function startTest() {
 
         await new Promise(r => setTimeout(r, 200)); 
 
-        // ZMIANA: Ponownie pobieramy aktualną instancję dla Uploadu
         currentGauge = getGaugeInstance();
         if (currentGauge) {
             setIsResetting(true); 
-            // FIX: Rozdzielamy update konfiguracji i ustawienie wartości
             currentGauge.update({ animationDuration: 1200 });
-            // DODANO: Krótka pauza (20ms)
             await new Promise(r => setTimeout(r, 20));
             currentGauge.value = 0;
         }
@@ -214,7 +202,7 @@ window.onload = () => {
     }
 
     updateThemeIcon(savedTheme);
-    checkAuthUI(); // Sprawdzamy czy pokazać przycisk wylogowania
+    checkAuthUI(); 
 
     try {
         initGauge();
@@ -284,6 +272,9 @@ window.onload = () => {
         try { updateTexts(getGaugeInstance()); } catch(e) { updateTexts(null); }
         saveSettings(nextLang, currentTheme, currentUnit);
         log(translations[lang].msg_lang);
+        
+        // ZMIANA: Aktualizacja UI przycisku trybu po zmianie języka
+        updateModeUI();
     };
     
     const themeToggle = el('theme-toggle');
@@ -327,27 +318,38 @@ window.onload = () => {
         if (!modeToggle || !modeText) return;
         
         if (THREADS > 1) {
-            modeText.innerText = "Multi";
-            modeText.setAttribute('data-key', 'mode_multi');
+            // FIX: Pobieramy tłumaczenie zamiast hardcodować string
+            const key = 'mode_multi';
+            const txt = (translations[lang] && translations[lang][key]) ? translations[lang][key] : "Multi";
+            
+            modeText.innerText = txt;
+            modeText.setAttribute('data-key', key);
             modeToggle.querySelector('.material-icons').innerText = "hub";
         } else {
-            modeText.innerText = "Single";
-            modeText.setAttribute('data-key', 'mode_single');
+            // FIX: Pobieramy tłumaczenie zamiast hardcodować string
+            const key = 'mode_single';
+            const txt = (translations[lang] && translations[lang][key]) ? translations[lang][key] : "Single";
+            
+            modeText.innerText = txt;
+            modeText.setAttribute('data-key', key);
             modeToggle.querySelector('.material-icons').innerText = "device_hub"; 
         }
     };
 
-    // Wywołujemy od razu po załadowaniu (wczyta z localStorage przez config.js)
+    // Wywołujemy od razu po załadowaniu
     updateModeUI();
     
     if(modeToggle) {
         modeToggle.onclick = () => {
             if (THREADS > 1) {
                 setThreads(1);
-                log(translations[lang].msg_mode_single || "Tryb: Pojedyncze połączenie");
+                // Logika powiadomień
+                const msg = translations[lang]['msg_mode_single'] || "Tryb: Pojedyncze połączenie";
+                log(msg);
             } else {
                 setThreads(16);
-                log(translations[lang].msg_mode_multi || "Tryb: Wiele połączeń");
+                const msg = translations[lang]['msg_mode_multi'] || "Tryb: Wiele połączeń";
+                log(msg);
             }
             updateModeUI();
         };

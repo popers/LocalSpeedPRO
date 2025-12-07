@@ -36,8 +36,9 @@ export const translations = {
         gauge_title: "PRĘDKOŚĆ",
         lbl_threads: "Wątki:", 
         
-        mode_single: "Single",
-        mode_multi: "Multi",
+        // ZMIANA: Polskie tłumaczenia trybów
+        mode_single: "Pojedyncze",
+        mode_multi: "Wiele",
         msg_mode_single: "Tryb połączenia: Pojedyncze",
         msg_mode_multi: "Tryb połączenia: Wiele",
 
@@ -59,7 +60,7 @@ export const translations = {
         nav_settings: "Ustawienia",
 
         // --- SETTINGS PAGE ---
-        title_settings: "LocalSpeed PRO - Ustawienia", // ZMIANA: Tłumaczenie tytułu strony
+        title_settings: "LocalSpeed PRO - Ustawienia", 
         settings_title: "Ustawienia",
         settings_appearance: "Personalizacja", 
         settings_oidc_title: "Logowanie OIDC (SSO)",
@@ -108,6 +109,7 @@ export const translations = {
         txt_every: "co",
         txt_days: "dni",
         txt_day: "dzień",
+        btn_select_all_mobile: "Zaznacz wszystkie karty",
 
         // --- LOGIN PAGE ---
         login_header: "LocalSpeed PRO",
@@ -118,6 +120,7 @@ export const translations = {
         msg_login_success: "Zalogowano pomyślnie",
         msg_login_error: "Błędny login lub hasło",
         msg_logged_out: "Wylogowano pomyślnie",
+        msg_oidc_error: "Błąd logowania OIDC",
         err_server: "Błąd połączenia z serwerem"
     },
     en: { 
@@ -167,7 +170,7 @@ export const translations = {
         nav_settings: "Settings",
 
         // --- SETTINGS PAGE ---
-        title_settings: "LocalSpeed PRO - Settings", // ZMIANA: Tłumaczenie tytułu strony
+        title_settings: "LocalSpeed PRO - Settings", 
         settings_title: "Settings",
         settings_appearance: "Personalization", 
         settings_oidc_title: "OIDC Login (SSO)",
@@ -216,6 +219,7 @@ export const translations = {
         txt_every: "every",
         txt_days: "days",
         txt_day: "day",
+        btn_select_all_mobile: "Select all cards",
 
         // --- LOGIN PAGE ---
         login_header: "LocalSpeed PRO",
@@ -226,6 +230,7 @@ export const translations = {
         msg_login_success: "Logged in successfully",
         msg_login_error: "Invalid username or password",
         msg_logged_out: "Logged out successfully",
+        msg_oidc_error: "OIDC Login Error",
         err_server: "Server connection error"
     }
 };

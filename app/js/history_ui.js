@@ -16,9 +16,17 @@ function renderHistoryTable(data) {
     const tbody = el('history-table').querySelector('tbody');
     tbody.innerHTML = '';
     
+    // Resetuj oba checkboxy główne (desktop i mobile)
     const masterCheckbox = el('select-all-checkbox');
-    masterCheckbox.checked = false;
-    masterCheckbox.indeterminate = false;
+    const mobileMasterCheckbox = el('mobile-select-all-checkbox');
+    
+    if(masterCheckbox) { masterCheckbox.checked = false; masterCheckbox.indeterminate = false; }
+    if(mobileMasterCheckbox) { mobileMasterCheckbox.checked = false; }
+
+    // FIX: Pobieramy aktualne tłumaczenia, aby wstawić je przy renderowaniu
+    const tPing = (translations[lang] && translations[lang]['table_ping']) || 'Ping';
+    const tDown = (translations[lang] && translations[lang]['table_down']) || 'Download';
+    const tUp = (translations[lang] && translations[lang]['table_up']) || 'Upload';
 
     data.forEach(row => {
         const isSelected = selectedIds.has(row.id);
@@ -26,14 +34,18 @@ function renderHistoryTable(data) {
         if (isSelected) tr.classList.add('selected');
 
         let modeIcon = 'hub'; 
-        let modeTitle = 'Multi';
+        let modeKey = 'mode_multi';
+        let modeTitle = translations[lang]['mode_multi'] || 'Multi'; 
+        
         const rowMode = row.mode || 'Multi'; 
         
         if (rowMode === 'Single') {
             modeIcon = 'device_hub';
-            modeTitle = 'Single';
+            modeKey = 'mode_single';
+            modeTitle = translations[lang]['mode_single'] || 'Single';
         }
 
+        // ZMIANA: Wstawiamy przetłumaczone etykiety do <span>
         tr.innerHTML = `
             <td class="checkbox-col">
                 <input type="checkbox" class="row-checkbox" data-id="${row.id}" ${isSelected ? 'checked' : ''}>
@@ -43,19 +55,22 @@ function renderHistoryTable(data) {
             <td>
                 <div class="mode-cell">
                     <span class="material-icons">${modeIcon}</span>
-                    <span>${modeTitle}</span>
+                    <span data-key="${modeKey}">${modeTitle}</span>
                 </div>
             </td>
 
             <td>
-                ${row.ping.toFixed(1)}<span class="mobile-unit">ms</span>
+                <span class="mobile-label" data-key="table_ping">${tPing}</span>
+                <span class="history-value">${row.ping.toFixed(1)}</span><span class="mobile-unit">ms</span>
             </td>
             
             <td>
-                ${formatSpeed(row.download)}<span class="mobile-unit">${getUnitLabel()}</span>
+                <span class="mobile-label" data-key="table_down">${tDown}</span>
+                <span class="history-value">${formatSpeed(row.download)}</span><span class="mobile-unit">${getUnitLabel()}</span>
             </td>
             <td>
-                ${formatSpeed(row.upload)}<span class="mobile-unit">${getUnitLabel()}</span>
+                <span class="mobile-label" data-key="table_up">${tUp}</span>
+                <span class="history-value">${formatSpeed(row.upload)}</span><span class="mobile-unit">${getUnitLabel()}</span>
             </td>
         `;
         
@@ -80,6 +95,7 @@ function toggleSelection(id, isChecked) {
     
     const checkbox = document.querySelector(`.row-checkbox[data-id="${id}"]`);
     if (checkbox) {
+        checkbox.checked = isChecked; 
         const tr = checkbox.closest('tr');
         if (isChecked) tr.classList.add('selected');
         else tr.classList.remove('selected');
@@ -103,24 +119,32 @@ function updateDeleteButton() {
 
 function updateMasterCheckboxState() {
     const masterCheckbox = el('select-all-checkbox');
+    const mobileMasterCheckbox = el('mobile-select-all-checkbox');
+    
     if (currentData.length === 0) {
-        masterCheckbox.checked = false;
-        masterCheckbox.indeterminate = false;
+        if(masterCheckbox) { masterCheckbox.checked = false; masterCheckbox.indeterminate = false; }
+        if(mobileMasterCheckbox) { mobileMasterCheckbox.checked = false; }
         return;
     }
 
     const allSelected = currentData.every(row => selectedIds.has(row.id));
     const someSelected = currentData.some(row => selectedIds.has(row.id));
 
-    if (allSelected) {
-        masterCheckbox.checked = true;
-        masterCheckbox.indeterminate = false;
-    } else if (someSelected) {
-        masterCheckbox.checked = false;
-        masterCheckbox.indeterminate = true;
-    } else {
-        masterCheckbox.checked = false;
-        masterCheckbox.indeterminate = false;
+    if(masterCheckbox) {
+        if (allSelected) {
+            masterCheckbox.checked = true;
+            masterCheckbox.indeterminate = false;
+        } else if (someSelected) {
+            masterCheckbox.checked = false;
+            masterCheckbox.indeterminate = true;
+        } else {
+            masterCheckbox.checked = false;
+            masterCheckbox.indeterminate = false;
+        }
+    }
+
+    if(mobileMasterCheckbox) {
+        mobileMasterCheckbox.checked = allSelected;
     }
 }
 
@@ -138,6 +162,7 @@ function toggleSelectAll(isChecked) {
     });
 
     updateDeleteButton();
+    updateMasterCheckboxState(); 
 }
 
 function showDeleteModal() {
@@ -225,9 +250,19 @@ export function initHistoryEvents() {
         loadHistory(1); 
     };
 
-    el('select-all-checkbox').onchange = (e) => {
-        toggleSelectAll(e.target.checked);
-    };
+    const masterCheckbox = el('select-all-checkbox');
+    if(masterCheckbox) {
+        masterCheckbox.onchange = (e) => {
+            toggleSelectAll(e.target.checked);
+        };
+    }
+
+    const mobileCheckbox = el('mobile-select-all-checkbox');
+    if(mobileCheckbox) {
+        mobileCheckbox.onchange = (e) => {
+            toggleSelectAll(e.target.checked);
+        };
+    }
 
     el('delete-selected-btn').onclick = showDeleteModal;
 
