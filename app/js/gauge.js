@@ -239,8 +239,10 @@ export function checkGaugeRange(speedMbps, forceUpdate = false) {
         
         currentMaxLimit = newConfig.maxValue;
         
-        // Ustaw wartość natychmiast na nowej skali
-        gauge.value = val;
+        // ZMIANA: Usunięto linię "gauge.value = val;"
+        // Dzięki temu funkcja aktualizuje tylko TŁO (skalę), a nie pozycję wskazówki.
+        // Pozycja wskazówki jest ustawiana osobno w pętli silnika testu (speedtest.js).
+        // To eliminuje "skok" wskazówki przy zmianie skali na podstawie prognozy (rawSpeed).
 
         // Przywróć animację
         setTimeout(() => {

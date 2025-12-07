@@ -75,7 +75,8 @@ async function runDownload(url) {
                 totalBytes += value.length;
                 const now = performance.now();
                 
-                if (now - lastReport > 100) {
+                // ZMIANA: Częstsze raportowanie (50ms zamiast 100ms) dla płynniejszego wykresu
+                if (now - lastReport > 50) {
                     self.postMessage({ type: 'progress', bytes: totalBytes, time: now });
                     lastReport = now;
                 }
@@ -110,7 +111,8 @@ function runUpload(url, maxBufferSize, minBufferSize) {
                 lastLoaded = e.loaded;
                 
                 const now = performance.now();
-                if (now - lastReport > 100) {
+                // ZMIANA: Częstsze raportowanie (50ms zamiast 100ms)
+                if (now - lastReport > 50) {
                     self.postMessage({ type: 'progress', bytes: totalBytes, time: now });
                     lastReport = now;
                 }
@@ -340,9 +342,9 @@ class SpeedTestEngine {
             }, this.monitorInterval);
         }
 
-        // --- ZMIANA: UPDATE INTERVAL 120ms (8.3 fps) ---
-        // Kompromis pomiędzy płynnością (100ms) a wydajnością (150-200ms).
-        const UPDATE_INTERVAL = 120; 
+        // --- ZMIANA: ZWIĘKSZONA PŁYNNOŚĆ (50ms = 20 FPS) ---
+        // Wcześniej 120ms powodowało, że wskazówka "skakała" przy szybkich zmianach.
+        const UPDATE_INTERVAL = 50; 
 
         this.timer = setInterval(() => {
             const now = performance.now();
@@ -378,7 +380,8 @@ class SpeedTestEngine {
             this.lastTime = now;
             this.lastTotalBytes = totalBytes;
 
-            if (this.uiSpeed === 0) this.uiSpeed = avgSpeed;
+            // ZMIANA: Usunięto warunek natychmiastowego startu dla lepszej płynności
+            // if (this.uiSpeed === 0) this.uiSpeed = avgSpeed;
 
             if (this.status === 'scaling' && avgSpeed < this.uiSpeed) {
                 avgSpeed = this.uiSpeed; 
@@ -388,23 +391,34 @@ class SpeedTestEngine {
                 avgSpeed = this.uiSpeed;
             }
 
-            // --- TŁUMIENIE WSKAZÓWKI ---
-            // Wartości 0.06 dla dużego wygładzenia przy interwale 120ms
-            let riseFactor = 0.06; 
+            // --- TŁUMIENIE WSKAZÓWKI (SMOOTHING) ---
+            // ZMIANA: Zmniejszono faktor do 0.03 (z 0.06), ponieważ pętla działa teraz częściej (50ms vs 120ms).
+            // Dzięki temu zachowujemy bezwładność, ale zyskujemy płynność ruchu.
+            let riseFactor = 0.12; 
             let fallFactor = 0.06; 
 
             const uiAlpha = (avgSpeed > this.uiSpeed) ? riseFactor : fallFactor;
             this.uiSpeed = (avgSpeed * uiAlpha) + (this.uiSpeed * (1 - uiAlpha));
 
-            let dropLimit = (this.type === 'upload') ? 0.999 : 0.995;
+            // ZMIANA: Dostosowano dropLimit do częstszego odświeżania, aby wskazówka nie opadała zbyt szybko
+            let dropLimit = (this.type === 'upload') ? 0.9995 : 0.998;
             
             if (this.uiSpeed < this.prevUiSpeed * dropLimit) {
                 this.uiSpeed = this.prevUiSpeed * dropLimit;
             }
 
+            // --- ZMIANA: OPÓŹNIENIE STARTU WSKAZÓWKI ---
+            // Pozwala skali (gauge) dostosować się do dużej prędkości (dzięki avgSpeed),
+            // zanim wskazówka (this.uiSpeed) zacznie się podnosić.
+            const NEEDLE_DELAY_MS = 350;
+            if (duration * 1000 < NEEDLE_DELAY_MS) {
+                this.uiSpeed = 0;
+            }
+
             this.prevUiSpeed = this.uiSpeed;
 
-            onUpdate(this.uiSpeed, duration, this.activeWorkers.length);
+            // ZMIANA: Przekazujemy również 'avgSpeed' jako surowy cel, aby UI mogło dostosować skalę
+            onUpdate(this.uiSpeed, avgSpeed, duration, this.activeWorkers.length);
 
             if (duration * 1000 >= TEST_DURATION) {
                 this.stop();
@@ -474,8 +488,11 @@ export function runDownload() {
         const currentGauge = getGaugeInstance();
 
         engine.start(
-            (speed, duration, activeThreads) => {
-                checkGaugeRange(speed); 
+            (speed, rawSpeed, duration, activeThreads) => {
+                // ZMIANA: Używamy większej wartości (wskazówka lub cel) do ustalenia skali.
+                // Dzięki temu, jeśli cel (rawSpeed) jest wysoki, skala od razu skoczy w górę.
+                checkGaugeRange(Math.max(speed, rawSpeed)); 
+
                 if(el('thread-count')) el('thread-count').innerText = activeThreads;
                 let displaySpeed = (currentUnit === 'mbs') ? speed / 8 : speed;
                 if (currentGauge) currentGauge.value = displaySpeed; 
@@ -500,8 +517,10 @@ export function runUpload() {
         const currentGauge = getGaugeInstance();
 
         engine.start(
-            (speed, duration, activeThreads) => {
-                checkGaugeRange(speed); 
+            (speed, rawSpeed, duration, activeThreads) => {
+                // ZMIANA: Analogicznie dla uploadu
+                checkGaugeRange(Math.max(speed, rawSpeed));
+
                 if(el('thread-count')) el('thread-count').innerText = activeThreads;
                 let displaySpeed = (currentUnit === 'mbs') ? speed / 8 : speed;
                 if (currentGauge) currentGauge.value = displaySpeed; 

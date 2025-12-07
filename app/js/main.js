@@ -84,7 +84,10 @@ async function startTest() {
         let currentGauge = getGaugeInstance();
         if (currentGauge) {
             setIsResetting(true); 
-            currentGauge.update({ animationDuration: 1200 }); 
+            // FIX: Rozdzielamy update konfiguracji i ustawienie wartości
+            currentGauge.update({ animationDuration: 1200 });
+            // DODANO: Krótka pauza (20ms), aby upewnić się, że update został przetworzony przed zmianą wartości
+            await new Promise(r => setTimeout(r, 20));
             currentGauge.value = 0;
         }
         
@@ -107,7 +110,10 @@ async function startTest() {
         currentGauge = getGaugeInstance();
         if (currentGauge) {
             setIsResetting(true); 
+            // FIX: Rozdzielamy update konfiguracji i ustawienie wartości
             currentGauge.update({ animationDuration: 1200 });
+            // DODANO: Krótka pauza (20ms)
+            await new Promise(r => setTimeout(r, 20));
             currentGauge.value = 0;
         }
         
