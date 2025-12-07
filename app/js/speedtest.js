@@ -340,6 +340,10 @@ class SpeedTestEngine {
             }, this.monitorInterval);
         }
 
+        // --- ZMIANA: UPDATE INTERVAL 120ms (8.3 fps) ---
+        // Kompromis pomiędzy płynnością (100ms) a wydajnością (150-200ms).
+        const UPDATE_INTERVAL = 120; 
+
         this.timer = setInterval(() => {
             const now = performance.now();
             const duration = (now - this.startTime) / 1000;
@@ -384,8 +388,10 @@ class SpeedTestEngine {
                 avgSpeed = this.uiSpeed;
             }
 
-            let riseFactor = (this.type === 'upload') ? 0.1 : 0.2; 
-            let fallFactor = (this.type === 'upload') ? 0.01 : 0.05; 
+            // --- TŁUMIENIE WSKAZÓWKI ---
+            // Wartości 0.06 dla dużego wygładzenia przy interwale 120ms
+            let riseFactor = 0.06; 
+            let fallFactor = 0.06; 
 
             const uiAlpha = (avgSpeed > this.uiSpeed) ? riseFactor : fallFactor;
             this.uiSpeed = (avgSpeed * uiAlpha) + (this.uiSpeed * (1 - uiAlpha));
@@ -404,7 +410,7 @@ class SpeedTestEngine {
                 this.stop();
                 onFinish((totalBytes * 8) / duration / 1e6);
             }
-        }, 100); 
+        }, UPDATE_INTERVAL); 
     }
 
     evaluateNetworkConditions() {
