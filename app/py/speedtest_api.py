@@ -46,7 +46,13 @@ def get_real_client_ip(request: Request) -> str:
 
 @router.post("/api/log_client")
 async def log_from_client(data: LogMessage):
-    print(f"\033[96m[CLIENT JS]\033[0m {data.text}", flush=True)
+    """
+    Odbiera logi z klienta JS i zapisuje je przez system logging.
+    ZMIANA: Używamy logger.info zamiast print, aby logi trafiały do pliku logs.txt
+    zdefiniowanego w main.py.
+    """
+    # [CLIENT JS] jest dodawane, aby łatwo filtrować te logi
+    logger.info(f"[CLIENT JS] {data.text}")
     return {"status": "ok"}
 
 @router.post("/api/upload")

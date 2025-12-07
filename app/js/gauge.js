@@ -6,6 +6,13 @@ let gauge = null;
 // Przechowujemy aktualny maksymalny zakres licznika, aby nie odświeżać go bez potrzeby
 let currentMaxLimit = 0;
 
+// ZMIANA: Flaga informująca, czy licznik jest w trakcie resetowania do zera
+let isResetting = false;
+
+export function setIsResetting(state) {
+    isResetting = state;
+}
+
 export function getGaugeInstance() {
     return gauge;
 }
@@ -175,7 +182,10 @@ export function initGauge() {
 
 export function reloadGauge() {
     let savedValue = 0;
-    if (gauge) {
+    
+    // ZMIANA: Jeśli jesteśmy w trakcie resetowania (opadania do zera),
+    // nie zapisujemy obecnej wartości, tylko pozwalamy licznikowi się wyzerować.
+    if (gauge && !isResetting) {
         savedValue = gauge.value;
     }
 

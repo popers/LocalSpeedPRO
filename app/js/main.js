@@ -14,7 +14,7 @@ import {
     timeout 
 } from '/js/utils.js';
 import { translations, TEST_DURATION, THREADS, setThreads } from '/js/config.js';
-import { initGauge, reloadGauge, getGaugeInstance } from '/js/gauge.js';
+import { initGauge, reloadGauge, getGaugeInstance, setIsResetting } from '/js/gauge.js'; // ZMIANA: Import setIsResetting
 import { initCharts, resetCharts } from '/js/charts.js';
 import { loadSettings, saveSettings, saveResult } from '/js/data_sync.js';
 import { initHistoryEvents, loadHistory, updateStatTiles } from '/js/history_ui.js';
@@ -58,7 +58,8 @@ async function startTest() {
     try { reloadGauge(); } catch(e) { console.warn("Gauge error:", e); }
     try { resetCharts(); } catch(e) { console.warn("Charts error:", e); }
 
-    const gaugeInstance = getGaugeInstance();
+    // ZMIANA: Nie pobieramy gaugeInstance tutaj do zmiennej lokalnej,
+    // bo może ona stać się nieaktualna w trakcie testu.
 
     let ping = 0, down = 0, up = 0;
 
@@ -79,13 +80,20 @@ async function startTest() {
 
         await new Promise(r => setTimeout(r, 200)); 
 
-        if (gaugeInstance) {
-            gaugeInstance.update({ animationDuration: 1200 }); 
-            gaugeInstance.value = 0;
+        // ZMIANA: Pobieramy aktualną instancję tuż przed użyciem
+        let currentGauge = getGaugeInstance();
+        if (currentGauge) {
+            setIsResetting(true); 
+            currentGauge.update({ animationDuration: 1200 }); 
+            currentGauge.value = 0;
         }
-        // Usunięto reset speed-value
+        
         await new Promise(r => setTimeout(r, 1200)); 
-        if (gaugeInstance) gaugeInstance.update({ animationDuration: 100 }); 
+        setIsResetting(false); 
+        
+        // Ponowne pobranie, na wypadek gdyby reloadGauge zadziałał w trakcie czekania
+        currentGauge = getGaugeInstance();
+        if (currentGauge) currentGauge.update({ animationDuration: 100 }); 
 
         // 3. UPLOAD
         el('card-up').classList.add('active');
@@ -95,13 +103,19 @@ async function startTest() {
 
         await new Promise(r => setTimeout(r, 200)); 
 
-        if (gaugeInstance) {
-            gaugeInstance.update({ animationDuration: 1200 });
-            gaugeInstance.value = 0;
+        // ZMIANA: Ponownie pobieramy aktualną instancję dla Uploadu
+        currentGauge = getGaugeInstance();
+        if (currentGauge) {
+            setIsResetting(true); 
+            currentGauge.update({ animationDuration: 1200 });
+            currentGauge.value = 0;
         }
-        // Usunięto reset speed-value
+        
         await new Promise(r => setTimeout(r, 1200));
-        if (gaugeInstance) gaugeInstance.update({ animationDuration: 100 }); 
+        setIsResetting(false); 
+        
+        currentGauge = getGaugeInstance();
+        if (currentGauge) currentGauge.update({ animationDuration: 100 }); 
 
         // 4. SAVE (Przekazujemy tryb)
         const currentMode = (THREADS > 1) ? "Multi" : "Single";
