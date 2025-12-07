@@ -24,32 +24,15 @@ BASE_DIR = "/app"
 JS_DIR = os.path.join(BASE_DIR, "js")
 CSS_DIR = os.path.join(BASE_DIR, "css")
 
-# --- INIT PLIKÓW DANYCH ---
-def initialize_static_files():
-    try:
-        os.makedirs(STATIC_DIR, exist_ok=True)
-    except Exception:
-        pass
-    REQUIRED_FILES = {
-        "10MB.bin": 10 * 1024 * 1024,
-        "100MB.bin": 100 * 1024 * 1024,
-        "500MB.bin": 500 * 1024 * 1024
-    }
-    for filename, size in REQUIRED_FILES.items():
-        filepath = os.path.join(STATIC_DIR, filename)
-        if not os.path.exists(filepath) or os.path.getsize(filepath) != size:
-            try:
-                with open(filepath + ".tmp", "wb") as f:
-                    f.write(os.urandom(size))
-                os.rename(filepath + ".tmp", filepath)
-            except Exception:
-                pass
-initialize_static_files()
+# Upewniamy się tylko, że katalog statyczny istnieje dla innych zasobów
+try:
+    os.makedirs(STATIC_DIR, exist_ok=True)
+except Exception:
+    pass
 
 app = FastAPI(title="LocalSpeed Pro")
 
 # --- KONFIGURACJA AUTH ---
-# Sprawdzamy zmienną środowiskową (domyślnie True)
 AUTH_ENABLED = os.getenv("AUTH_ENABLED", "true").lower() == "true"
 if not AUTH_ENABLED:
     logger.info("LOGOWANIE WYŁĄCZONE (AUTH_ENABLED=false) - Dostęp otwarty")
@@ -57,15 +40,12 @@ if not AUTH_ENABLED:
 # --- EVENTY APLIKACJI (STARTUP/SHUTDOWN) ---
 @app.on_event("startup")
 async def startup_event():
-    """Uruchomienie schedulera przy starcie aplikacji."""
     start_scheduler()
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Zatrzymanie schedulera przy wyłączeniu."""
     stop_scheduler()
 
-# --- WAŻNE: SessionMiddleware Fix ---
 SECRET_KEY = os.getenv("APP_SECRET", "dev_secret_key_fixed_12345")
 
 app.add_middleware(
@@ -87,11 +67,9 @@ app.add_middleware(
 # --- MIDDLEWARE AUTORYZACJI ---
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
-    # 1. Jeśli logowanie jest całkowicie wyłączone w .env, przepuszczamy wszystko
     if not AUTH_ENABLED:
         return await call_next(request)
 
-    # 2. Lista ścieżek publicznych
     public_paths = [
         "/login.html", 
         "/api/login", 
@@ -106,7 +84,6 @@ async def auth_middleware(request: Request, call_next):
     if is_public:
         return await call_next(request)
     
-    # 3. Sprawdzenie ciasteczka
     token = request.cookies.get(COOKIE_NAME)
     if token != "authorized":
         if path.startswith("/api"):
@@ -117,7 +94,6 @@ async def auth_middleware(request: Request, call_next):
              
     response = await call_next(request)
     
-    # Obsługa wygaśnięcia sesji
     if response.status_code == 401:
         response.delete_cookie(COOKIE_NAME)
     return response
@@ -135,9 +111,15 @@ app.mount("/css", StaticFiles(directory=CSS_DIR), name="css")
 async def read_index(): 
     return FileResponse(os.path.join(BASE_DIR, 'index.html'))
 
-@app.get("/settings.html")
+# --- ZMIANA: Czysty URL dla ustawień ---
+@app.get("/settings")
 async def read_settings():
     return FileResponse(os.path.join(BASE_DIR, 'settings.html'))
+
+# Przekierowanie starego adresu .html na czysty URL (dla estetyki i SEO)
+@app.get("/settings.html")
+async def read_settings_legacy():
+    return RedirectResponse("/settings")
 
 @app.get("/login.html")
 async def read_login():

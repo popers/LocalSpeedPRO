@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl"> <!-- Zostawiam lang="pl" jako domyślny fallback w pliku -->
+<html lang="pl"> 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -96,7 +96,8 @@
                     <span data-key="nav_measurements">Pomiary</span>
                 </a>
                 
-                <a href="/settings.html" class="nav-link" id="nav-settings">
+                <!-- ZMIANA: Link prowadzi do /settings zamiast settings.html -->
+                <a href="/settings" class="nav-link" id="nav-settings">
                     <span class="material-icons">settings</span>
                     <span data-key="nav_settings">Ustawienia</span>
                 </a>
@@ -108,15 +109,11 @@
                 <div class="gauge-section">
                     <canvas id="speed-gauge"></canvas>
                     
-                    <!-- 1. Ping nad licznikiem -->
                     <div class="ping-display">
                         <span class="material-icons">network_check</span>
                         <span id="ping-text">--</span> ms
                     </div>
 
-                    <!-- Usunięto div.digital-box -->
-                    
-                    <!-- 3. Rząd sterowania (Multi | Threads | Mbps) -->
                     <div class="controls-row">
                         <button id="mode-toggle" class="mode-switch" title="Zmień tryb połączenia">
                             <span class="material-icons">hub</span>
@@ -195,7 +192,6 @@
                                         <span data-key="table_date">Data</span> 
                                         <span class="sort-icon material-icons">unfold_more</span>
                                     </th>
-                                    <!-- NOWA KOLUMNA -->
                                     <th class="sortable" data-sort="mode">
                                         <span data-key="table_mode">Tryb</span> 
                                         <span class="sort-icon material-icons">unfold_more</span>

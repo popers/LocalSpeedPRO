@@ -44,9 +44,11 @@ async function runDownload(url) {
     let totalBytes = 0;
     let startTime = performance.now();
     let lastReport = startTime;
+    let maxChunkLogged = 0; // Do śledzenia wzrostu chunków
 
     while (true) {
         try {
+            // Dodajemy losowy parametr t, aby uniknąć cache'owania przeglądarki
             const fetchUrl = url + (url.includes('?') ? '&' : '?') + 't=' + Math.random();
             const response = await fetch(fetchUrl, { cache: "no-store", keepalive: true });
             if (!response.body) return;
@@ -57,6 +59,19 @@ async function runDownload(url) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 
+                // --- LOGOWANIE WZROSTU CHUNKÓW (Monitorowanie bufora Download) ---
+                // Logujemy tylko, jeśli otrzymaliśmy większą paczkę niż dotychczas
+                // i jest ona znacząca (> 64KB), aby nie spamować logami na początku.
+                if (value.length > maxChunkLogged) {
+                    maxChunkLogged = value.length;
+                    if (maxChunkLogged > 64 * 1024) {
+                        self.postMessage({ 
+                            type: 'log', 
+                            text: "DL Chunk Growth: " + (maxChunkLogged/1024).toFixed(0) + " KB" 
+                        });
+                    }
+                }
+
                 totalBytes += value.length;
                 const now = performance.now();
                 
@@ -66,7 +81,7 @@ async function runDownload(url) {
                 }
             }
         } catch (e) {
-            // Retry
+            // Retry w pętli
         }
     }
 }
@@ -106,10 +121,19 @@ function runUpload(url, maxBufferSize, minBufferSize) {
             const reqEnd = performance.now();
             const duration = reqEnd - reqStart;
 
+            // --- ALGORYTM ADAPTACYJNY BUFORA (Monitorowanie bufora Upload) ---
             if (duration < 50) {
                 const oldSize = currentSize;
                 currentSize *= 2;
                 if (currentSize > maxBufferSize) currentSize = maxBufferSize;
+                
+                // LOGOWANIE ZMIANY BUFORA
+                if (currentSize !== oldSize) {
+                    self.postMessage({ 
+                        type: 'log', 
+                        text: "UL Buffer Up: " + (oldSize/1024).toFixed(0) + "KB -> " + (currentSize/1024).toFixed(0) + "KB" 
+                    });
+                }
             } 
             
             if (currentSize > maxBufferSize) currentSize = maxBufferSize;
@@ -131,7 +155,6 @@ export async function runPing() {
     sendLogToDocker(`[Phase 1] Starting Ping Test...`);
 
     // --- KROK 1: Próba ICMP (Backend -> Client) ---
-    // To jest "Święty Graal" pingu - pomiar systemowy bez narzutu przeglądarki.
     try {
         const start = performance.now();
         const res = await fetch('/api/ping_icmp');
@@ -148,10 +171,7 @@ export async function runPing() {
         console.warn("ICMP Request failed", e);
     }
 
-    // --- KROK 2: Fallback do HTTP (OpenSpeedTest style) ---
-    // Jeśli ICMP się nie uda (np. brak 'ping' w kontenerze lub blokada),
-    // używamy naszej zoptymalizowanej metody XHR.
-    
+    // --- KROK 2: Fallback do HTTP ---
     const PING_COUNT = 15; 
     const pings = [];
     
@@ -159,9 +179,7 @@ export async function runPing() {
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.open("GET", url, true);
-            
             const startFallback = performance.now();
-            
             xhr.onreadystatechange = () => {
                 if (xhr.readyState === 4) { 
                     const entries = performance.getEntriesByName(new URL(url, window.location.href).href);
@@ -177,13 +195,11 @@ export async function runPing() {
         });
     };
 
-    // Warmup
     try { await pingRequest(`/api/ping?warmup=${Date.now()}`); } catch(e) {}
 
     for(let i=0; i<PING_COUNT; i++) {
         const url = `/api/ping?t=${Date.now()}_${i}`;
         performance.clearResourceTimings();
-
         try {
             const duration = await pingRequest(url);
             if (duration < 200) pings.push(duration);
@@ -192,12 +208,8 @@ export async function runPing() {
     }
 
     if (pings.length === 0) return 0;
-
     const minPing = Math.min(...pings);
-    const avgPing = pings.reduce((a,b) => a+b, 0) / pings.length;
-    
     sendLogToDocker(`[Phase 1] HTTP Result: Min: ${minPing.toFixed(3)}ms`);
-    
     return minPing; 
 }
 
@@ -268,9 +280,14 @@ class SpeedTestEngine {
             maxBuf = 4 * 1024 * 1024; 
         }
 
+        // ZMIANA: URL dla downloadu wskazuje teraz na endpoint API generujący dane w RAM
+        // size=100 oznacza 100MB per request. W pętli worker i tak będzie to pobierał wielokrotnie.
+        const downloadUrl = '/api/download?size=100'; 
+        const uploadUrl = '/api/upload';
+
         const config = {
             command: this.type,
-            url: this.type === 'download' ? '/static/100MB.bin' : '/api/upload',
+            url: this.type === 'download' ? downloadUrl : uploadUrl,
             minBufferSize: minBuf,
             maxBufferSize: maxBuf,
             uploadData: null,
@@ -284,7 +301,7 @@ class SpeedTestEngine {
             this.workerResults.set(id, 0);
         }
         
-        sendLogToDocker(`[Engine] Worker added (ID: ${id}). Buffer: ${minBuf/1024}KB -> ${maxBuf/1024/1024}MB`);
+        sendLogToDocker(`[Engine] Worker added (ID: ${id}). Target: ${config.url}`);
     }
 
     removeLastWorker() {
@@ -407,7 +424,6 @@ class SpeedTestEngine {
             if (this.activeWorkers.length < this.maxThreads) {
                 this.addWorker();
                 this.stableCount = 0; 
-                
                 if (forceScaling) {
                     sendLogToDocker(`[Engine] 🚀 Force Ramp-up (Stable but < 4 threads). Speed: ${this.currentInstantSpeed.toFixed(0)} Mbps`);
                 }

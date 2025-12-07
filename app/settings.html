@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LocalSpeed PRO - Settings</title>
+    <!-- ZMIANA: Dodano data-key dla tytułu -->
+    <title data-key="title_settings">LocalSpeed PRO - Settings</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     
@@ -83,7 +84,8 @@
                     <span data-key="nav_measurements">Pomiary</span>
                 </a>
                 
-                <a href="/settings.html" class="nav-link active" id="nav-settings">
+                <!-- ZMIANA: Link prowadzi do /settings -->
+                <a href="/settings" class="nav-link active" id="nav-settings">
                     <span class="material-icons">settings</span>
                     <span data-key="nav_settings">Ustawienia</span>
                 </a>
@@ -202,7 +204,6 @@
                                 <p class="desc-text" data-key="gdrive_desc">Automatycznie wysyłaj kopie zapasowe do folderu na Google Drive.</p>
 
                                 <div class="gdrive-status-line">
-                                    <!-- USUNIĘTO data-key z rodzica, aby updateTexts nie nadpisywał całości -->
                                     <span id="gdrive-status-text">
                                         <span class="material-icons link-icon">link_off</span>
                                         <span data-key="status_disconnected">Status: Nie połączono</span>
@@ -212,7 +213,6 @@
                                 <div class="backup-info-grid">
                                     <div>
                                         <small data-key="lbl_last_backup">Ostatni backup:</small> 
-                                        <!-- Przeniesienie Sukces/Status niżej -->
                                         <div class="backup-date-row">
                                             <span id="last-backup-date">--</span>
                                         </div>
@@ -394,7 +394,6 @@
 
         async function fetchAndFillSettings() {
             try {
-                // Dodajemy sprawdzenie statusu AUTH, aby ukryć logout jeśli trzeba
                 const authRes = await fetch('/api/auth/status');
                 if (authRes.ok) {
                     const authData = await authRes.json();
@@ -443,32 +442,16 @@
             } catch(e) { console.error("Failed to load settings:", e); }
         }
         
-        function formatDays(days) {
-            const d = parseInt(days);
-            if(isNaN(d)) return days;
-            const t = translations[lang];
-            const every = t.txt_every || "co";
-            if (d === 1) {
-                const day = t.txt_day || "dzień";
-                return `${d} ${day}`; 
-            }
-            const daysTxt = t.txt_days || "dni";
-            return `${d} ${daysTxt}`;
-        }
-
         async function fetchBackupStatus() {
             try {
                 const res = await fetch('/api/backup/status');
                 const stat = await res.json();
                 
-                // Tłumaczenie statusu "Sukces"
                 let statusMsg = stat.status;
                 const t = translations[lang]; 
                 
-                // Poprawka literówki z backendu
                 if (statusMsg === "Niepołączono") statusMsg = t.status_disconnected || "Nie połączono";
                 
-                // Lista statusów do ukrycia pod datą ostatniego backupu
                 const ignoredStatuses = ["Niepołączono", "Nie połączono", "Połączono pomyślnie", "Połączono", "Connected", "Disconnected"];
                 let isConnectionStatus = ignoredStatuses.includes(stat.status) || ignoredStatuses.includes(statusMsg);
                 
@@ -508,7 +491,7 @@
                     btnConnect.setAttribute('data-action', 'disconnect');
                     btnConnect.classList.remove('btn-primary-fill');
                     btnConnect.classList.add('btn-danger-fill');
-                    btnConnect.innerHTML = `<span class="material-icons">link_off</span> <span data-key="btn_disconnect_account">${t.btn_disconnect_account || "ODŁĄCZ"}</span>`;
+                    btnConnect.innerHTML = `<span class="material-icons link-icon">link_off</span> <span data-key="btn_disconnect_account">${t.btn_disconnect_account || "ODŁĄCZ"}</span>`;
                     
                 } else {
                     statusText.style.color = "#ff5252";
@@ -662,7 +645,6 @@
                 el('trigger-backup-btn').disabled = false;
             };
 
-            // ZMIANA: FIX motywu w settings
             el('lang-toggle').onclick = () => { 
                 const n = lang === 'pl' ? 'en' : 'pl'; 
                 setLang(n); 

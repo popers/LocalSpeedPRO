@@ -1,6 +1,6 @@
 // Odczytujemy zapisaną wartość przy starcie. Domyślnie 16 (Multi) dla Desktop.
 const savedThreads = localStorage.getItem('ls_threads');
-export let THREADS = savedThreads ? parseInt(savedThreads) : 16; // ZMIANA: 12 -> 16
+export let THREADS = savedThreads ? parseInt(savedThreads) : 16; 
 
 export const TEST_DURATION = 12000; 
 
@@ -59,6 +59,7 @@ export const translations = {
         nav_settings: "Ustawienia",
 
         // --- SETTINGS PAGE ---
+        title_settings: "LocalSpeed PRO - Ustawienia", // ZMIANA: Tłumaczenie tytułu strony
         settings_title: "Ustawienia",
         settings_appearance: "Personalizacja", 
         settings_oidc_title: "Logowanie OIDC (SSO)",
@@ -166,6 +167,7 @@ export const translations = {
         nav_settings: "Settings",
 
         // --- SETTINGS PAGE ---
+        title_settings: "LocalSpeed PRO - Settings", // ZMIANA: Tłumaczenie tytułu strony
         settings_title: "Settings",
         settings_appearance: "Personalization", 
         settings_oidc_title: "OIDC Login (SSO)",

@@ -6,12 +6,19 @@ import platform
 import re
 import asyncio
 from fastapi import APIRouter, Request, HTTPException, Response
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from .database import STATIC_DIR
 
 router = APIRouter()
 logger = logging.getLogger("ClientLogger")
+
+# --- KONFIGURACJA GENERATORA DANYCH ---
+# Tworzymy statyczny blok danych w pamięci RAM (np. 4MB), który będziemy wysyłać w pętli.
+# Dzięki temu nie obciążamy CPU generowaniem losowych danych w czasie rzeczywistym,
+# a jedynie kopiujemy gotowy blok pamięci.
+CHUNK_SIZE = 4 * 1024 * 1024  # 4 MB
+RANDOM_DATA = os.urandom(CHUNK_SIZE)
 
 # Model danych dla logu
 class LogMessage(BaseModel):
@@ -21,39 +28,32 @@ def get_real_client_ip(request: Request) -> str:
     """
     Pobiera prawdziwe IP klienta, uwzględniając proxy (Nginx, Traefik, Cloudflare).
     """
-    # 1. X-Forwarded-For (Standard) - może zawierać listę IP, bierzemy pierwsze
     x_forwarded = request.headers.get("x-forwarded-for")
     if x_forwarded:
         return x_forwarded.split(",")[0].strip()
     
-    # 2. X-Real-IP (Często używane przez Nginx)
     x_real = request.headers.get("x-real-ip")
     if x_real:
         return x_real
     
-    # 3. CF-Connecting-IP (Cloudflare)
     cf_ip = request.headers.get("cf-connecting-ip")
     if cf_ip:
         return cf_ip
 
-    # 4. Fallback do bezpośredniego połączenia (jeśli brak proxy)
     return request.client.host
 
-# --- ENDPOINT DO LOGOWANIA W KONSOLI DOCKERA ---
+# --- ENDPOINTY ---
+
 @router.post("/api/log_client")
 async def log_from_client(data: LogMessage):
-    """
-    Odbiera komunikat z przeglądarki i wypisuje go w konsoli serwera.
-    """
     print(f"\033[96m[CLIENT JS]\033[0m {data.text}", flush=True)
     return {"status": "ok"}
-
-# --- SPEEDTEST API ---
 
 @router.post("/api/upload")
 async def upload_stream(request: Request):
     """
-    Odbiera strumień danych i zlicza bajty.
+    Odbiera strumień danych i zlicza bajty (Test Uploadu).
+    Dane trafiają w "czarną dziurę" (/dev/null), liczymy tylko transfer.
     """
     total_bytes = 0
     start_time = time.time()
@@ -68,11 +68,47 @@ async def upload_stream(request: Request):
     
     return JSONResponse({"received": total_bytes, "time": duration})
 
+@router.get("/api/download")
+async def download_stream(size: int = 100):
+    """
+    Generuje strumień danych z pamięci RAM (Test Downloadu).
+    
+    Args:
+        size (int): Rozmiar danych do pobrania w MB (domyślnie 100MB).
+    """
+    # Ograniczenie bezpieczeństwa - max 1GB na jedno żądanie
+    if size > 1000: size = 1000
+    if size < 1: size = 1
+    
+    total_bytes = size * 1024 * 1024
+
+    def iterfile():
+        bytes_sent = 0
+        while bytes_sent < total_bytes:
+            # Oblicz ile zostało do wysłania
+            remaining = total_bytes - bytes_sent
+            # Wyślij pełny CHUNK lub resztkę, jeśli została mniejsza niż CHUNK
+            to_send = min(remaining, CHUNK_SIZE)
+            
+            # Jeśli wysyłamy pełny chunk, używamy pre-alokowanego bufora
+            if to_send == CHUNK_SIZE:
+                yield RANDOM_DATA
+            else:
+                yield RANDOM_DATA[:to_send]
+                
+            bytes_sent += to_send
+
+    headers = {
+        "Content-Disposition": f'attachment; filename="random_{size}MB.bin"',
+        "Content-Length": str(total_bytes),
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
+    }
+
+    return StreamingResponse(iterfile(), media_type="application/octet-stream", headers=headers)
+
 @router.get("/api/ping")
 async def ping():
-    """
-    Ultra-lekki endpoint do pomiaru opóźnienia HTTP (Fallback).
-    """
     return Response(status_code=204, headers={
         "Timing-Allow-Origin": "*",
         "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"
@@ -80,24 +116,17 @@ async def ping():
 
 @router.get("/api/ping_icmp")
 async def ping_icmp(request: Request):
-    """
-    Wykonuje prawdziwy PING ICMP z serwera do klienta.
-    Obsługuje scenariusze za Reverse Proxy (Nginx/Traefik).
-    """
     try:
         client_ip = get_real_client_ip(request)
         
-        # Zabezpieczenie: Nie pingujemy localhosta ani 127.0.0.1, bo to zafałszuje wynik
         if client_ip in ["127.0.0.1", "localhost", "::1"]:
              return {"ping": 0, "error": "Skipping localhost ping", "method": "skipped"}
 
-        # Ustalamy komendę w zależności od systemu
         if platform.system().lower() == "windows":
             cmd = ["ping", "-n", "1", "-w", "1000", client_ip]
         else:
             cmd = ["ping", "-c", "1", "-W", "1", client_ip]
 
-        # Uruchamiamy w osobnym wątku
         process = await asyncio.to_thread(
             subprocess.run, 
             cmd, 
@@ -107,29 +136,25 @@ async def ping_icmp(request: Request):
         )
 
         if process.returncode == 0:
-            # Parsowanie wyniku (Windows/Linux)
             match = re.search(r'(?:time|czas|Cza)[=<]([\d\.]+)', process.stdout, re.IGNORECASE)
             if match:
                 return {"ping": float(match.group(1)), "method": "icmp", "ip": client_ip}
                 
         return {
             "ping": 0, 
-            "error": "ICMP unreachable (Client Firewall?)", 
-            "ip": client_ip, 
-            "details": "Target blocked ICMP request"
+            "error": "ICMP unreachable", 
+            "ip": client_ip
         }
 
     except Exception as e:
         logger.error(f"ICMP Error: {e}")
         return {"ping": 0, "error": str(e)}
 
+# Zachowujemy endpoint statyczny dla kompatybilności wstecznej lub customowych plików,
+# ale główny test będzie teraz korzystał z /api/download
 @router.get("/static/{filename}")
 async def serve_test_file(filename: str):
-    """
-    Serwuje pliki binarne do testu downloadu.
-    """
     file_path = os.path.join(STATIC_DIR, filename)
-    
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
         
@@ -138,7 +163,6 @@ async def serve_test_file(filename: str):
         media_type='application/octet-stream',
         headers={
             "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-            "Pragma": "no-cache",
-            "Content-Encoding": "identity"
+            "Pragma": "no-cache"
         }
     )
