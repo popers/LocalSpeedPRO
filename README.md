@@ -3,7 +3,7 @@
 A lightweight, self-hosted network performance testing tool designed for Docker. Built with a Python FastAPI backend and a vanilla JavaScript frontend using Web Workers to ensure accurate high-speed measurements for LAN and WAN environments.
 
 ### Features:
-* Measures Ping, Download, and Upload speeds with support for Single and Multi-threaded connections.
+* Measures Ping, Jitter, Download, and Upload speeds with support for Single and Multi-threaded connections.
 * Real-time visualization with gauges and charts; includes customizable Dark/Light themes.
 * Full measurement history with sorting, pagination, and CSV export.
 * Native authentication system plus **OpenID Connect (OIDC)** support for SSO integration.
