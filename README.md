@@ -1,4 +1,4 @@
-# LocalSpeed PRO ![version](https://img.shields.io/badge/v0.1-purple)
+# LocalSpeed PRO ![version](https://img.shields.io/badge/v0.2-purple)
 
 A lightweight, self-hosted network performance testing tool designed for Docker. Built with a Python FastAPI backend and a vanilla JavaScript frontend using Web Workers to ensure accurate high-speed measurements for LAN and WAN environments.
 
@@ -13,7 +13,7 @@ A lightweight, self-hosted network performance testing tool designed for Docker.
 
 **Dashboard**
 
-<img alt="dashboard" src="https://github.com/user-attachments/assets/d5060973-e491-49c9-a0c5-787c0fd99d09" />
+<img alt="dashboard" src="https://github.com/user-attachments/assets/4eca3c3f-884a-43b8-86b8-66ded67290e6" />
 
 **OIDC Settings**
 
@@ -53,6 +53,8 @@ services:
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - ./logs:/app/logs 
     depends_on:
       db:
         condition: service_healthy
