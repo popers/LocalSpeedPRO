@@ -14,7 +14,7 @@ import {
     timeout 
 } from '/js/utils.js';
 import { translations, TEST_DURATION, THREADS, setThreads } from '/js/config.js';
-import { initGauge, reloadGauge, getGaugeInstance, setIsResetting } from '/js/gauge.js'; 
+import { initGauge, reloadGauge, resetGauge, getGaugeInstance } from '/js/gauge.js'; // ZMIANA importu
 import { initCharts, resetCharts } from '/js/charts.js';
 import { loadSettings, saveSettings, saveResult } from '/js/data_sync.js';
 import { initHistoryEvents, loadHistory, updateStatTiles } from '/js/history_ui.js';
@@ -37,7 +37,6 @@ async function checkAuthUI() {
         const res = await fetch('/api/auth/status');
         if(res.ok) {
             const data = await res.json();
-            // Jeśli auth jest wyłączony, ukrywamy przycisk wylogowania
             if (data.auth_enabled === false) {
                 const logoutBtn = el('logout-btn');
                 if (logoutBtn) logoutBtn.style.display = 'none';
@@ -73,7 +72,6 @@ async function startTest() {
         await new Promise(r => setTimeout(r, 800));
 
         // 1. PING IDLE & JITTER
-        // runPing zwraca teraz obiekt {ping, jitter}
         pingResults = await Promise.race([runPing(), timeout(4000)]);
         if (!pingResults) throw new Error("Ping error");
 
@@ -82,27 +80,27 @@ async function startTest() {
 
         // 2. DOWNLOAD
         el('card-down').classList.add('active');
-        // runDownload zwraca teraz {speed, ping}
         downResult = await Promise.race([runDownload(), timeout(TEST_DURATION + 1000)]); 
         el('down-val').textContent = formatSpeed(downResult.speed); 
         el('ping-dl-val').textContent = downResult.ping.toFixed(1);
         el('card-down').classList.remove('active');
 
-        await new Promise(r => setTimeout(r, 200)); 
+        // Reset wskazówki - ZMIANA: Wydłużony czas oczekiwania (1600ms) dla wolniejszej animacji
         resetGauge();
+        await new Promise(r => setTimeout(r, 1600)); 
 
         // 3. UPLOAD
         el('card-up').classList.add('active');
-        // runUpload zwraca teraz {speed, ping}
         upResult = await Promise.race([runUpload(), timeout(TEST_DURATION + 1000)]);
         el('up-val').textContent = formatSpeed(upResult.speed);
         el('ping-ul-val').textContent = upResult.ping.toFixed(1);
         el('card-up').classList.remove('active');
 
-        await new Promise(r => setTimeout(r, 200)); 
+        // Reset wskazówki - ZMIANA: Wydłużony czas oczekiwania
         resetGauge();
+        await new Promise(r => setTimeout(r, 1600)); 
 
-        // 4. SAVE (Zapisujemy wszystkie metryki)
+        // 4. SAVE
         const currentMode = (THREADS > 1) ? "Multi" : "Single";
         await saveResult(
             pingResults.ping, 
@@ -126,22 +124,6 @@ async function startTest() {
         btn.disabled = false;
         btn.classList.remove('loading'); 
     }
-}
-
-async function resetGauge() {
-    let currentGauge = getGaugeInstance();
-    if (currentGauge) {
-        setIsResetting(true); 
-        currentGauge.update({ animationDuration: 1200 });
-        await new Promise(r => setTimeout(r, 20));
-        currentGauge.value = 0;
-    }
-    
-    await new Promise(r => setTimeout(r, 1200)); 
-    setIsResetting(false); 
-    
-    currentGauge = getGaugeInstance();
-    if (currentGauge) currentGauge.update({ animationDuration: 100 }); 
 }
 
 function initMenu() {
@@ -217,8 +199,6 @@ window.onload = () => {
         initGauge();
     } catch (e) {
         console.error("Gauge init failed:", e);
-        const gaugeEl = el('speed-gauge');
-        if(gaugeEl) gaugeEl.style.display = 'none';
     }
 
     try {
@@ -281,8 +261,6 @@ window.onload = () => {
         try { updateTexts(getGaugeInstance()); } catch(e) { updateTexts(null); }
         saveSettings(nextLang, currentTheme, currentUnit);
         log(translations[lang].msg_lang);
-        
-        // ZMIANA: Aktualizacja UI przycisku trybu po zmianie języka
         updateModeUI();
     };
     
@@ -322,7 +300,6 @@ window.onload = () => {
     const modeToggle = el('mode-toggle');
     const modeText = el('mode-text');
     
-    // --- FUNKCJA AKTUALIZUJĄCA UI PRZYCISKU MULTI/SINGLE ---
     const updateModeUI = () => {
         if (!modeToggle || !modeText) return;
         

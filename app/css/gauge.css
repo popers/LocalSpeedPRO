@@ -12,6 +12,19 @@
     overflow: hidden; 
 }
 
+/* KONTENER ECHARTS */
+.gauge-container {
+    width: 100%;
+    flex: 1; /* Wypełnij dostępną przestrzeń */
+    min-height: 320px; /* Minimalna wysokość dla wykresu */
+    max-height: 500px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
 /* THREADS DISPLAY */
 .thread-display {
     background: transparent;
@@ -40,6 +53,8 @@
     margin-top: auto; 
     position: relative;
     z-index: 20;
+    /* Dodatkowy margines, aby nie nachodziło na wykres */
+    margin-bottom: 10px; 
 }
 
 /* WSPÓLNE STYLE DLA PRZEŁĄCZNIKÓW */
@@ -84,13 +99,20 @@
 /* --- STYLE DLA WERSJI MOBILNEJ --- */
 @media (max-width: 900px) {
     .gauge-section {
-        padding: 10px 0 20px 0 !important;
-        min-height: 300px; 
+        /* ZMIANA: Zmniejszono padding dolny z 20px na 8px */
+        padding: 10px 0 8px 0 !important;
+        min-height: 350px; 
+    }
+
+    .gauge-container {
+        min-height: 280px;
     }
 
     .controls-row {
         gap: 5px;
         padding: 0 15px; 
+        /* ZMIANA: Zmniejszono margines dolny z 10px na 2px */
+        margin-bottom: 2px;
     }
 
     .unit-switch, .mode-switch, .thread-display {

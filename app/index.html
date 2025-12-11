@@ -21,7 +21,8 @@
     <link rel="stylesheet" href="/css/toast.css">
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://unpkg.com/canvas-gauges@2.1.7/gauge.min.js"></script>
+    <!-- ZMIANA: ECharts zamiast canvas-gauges -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 
     <script>
         (function() {
@@ -106,10 +107,9 @@
         <main>
             <div class="dashboard-container">
                 <div class="gauge-section">
-                    <canvas id="speed-gauge"></canvas>
+                    <!-- ZMIANA: Div zamiast canvas dla ECharts -->
+                    <div id="speed-gauge" class="gauge-container"></div>
                     
-                    <!-- USUNIĘTO: .ping-display stąd -->
-
                     <div class="controls-row">
                         <button id="mode-toggle" class="mode-switch" title="Zmień tryb połączenia">
                             <span class="material-icons">hub</span>

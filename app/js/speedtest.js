@@ -1,6 +1,6 @@
 import { el, formatSpeed, currentUnit, setLastResultDown, setLastResultUp } from '/js/utils.js';
 import { THREADS, TEST_DURATION } from '/js/config.js';
-import { checkGaugeRange, getGaugeInstance } from '/js/gauge.js';
+import { checkGaugeRange, setGaugeValue } from '/js/gauge.js'; // ZMIANA importu
 import { updateChart } from '/js/charts.js';
 
 // --- LOCAL UTILS ---
@@ -9,7 +9,6 @@ const isMobileDevice = () => {
            || (window.innerWidth < 900);
 };
 
-// Funkcja pomocnicza do wysyłania logów do Dockera
 const sendLogToDocker = (text) => {
     fetch('/api/log_client', {
         method: 'POST',
@@ -58,7 +57,6 @@ async function runDownload(url) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 
-                // PRZYWRÓCONO: Logowanie wzrostu chunka
                 if (value.length > maxChunkLogged) {
                     maxChunkLogged = value.length;
                     if (maxChunkLogged > 64 * 1024) {
@@ -122,7 +120,6 @@ function runUpload(url, maxBufferSize, minBufferSize) {
                 currentSize *= 2;
                 if (currentSize > maxBufferSize) currentSize = maxBufferSize;
                 
-                // PRZYWRÓCONO: Logowanie zmiany bufora uploadu
                 if (currentSize !== oldSize) {
                     self.postMessage({ 
                         type: 'log', 
@@ -189,7 +186,7 @@ export function runPing() {
             
             if (count < WARMUP) {
                 count++;
-                setTimeout(sendPing, 50); // Małe opóźnienie między pingami
+                setTimeout(sendPing, 50); 
             } else if (count < WARMUP + SAMPLES) {
                 pings.push(latency);
                 count++;
@@ -206,8 +203,6 @@ export function runPing() {
                 const jitter = calculateJitter(pings);
                 
                 sendLogToDocker(`[Phase 1] Result: Min=${minPing.toFixed(2)}, Avg=${avgPing.toFixed(2)}, Jitter=${jitter.toFixed(2)}`);
-                
-                // Zwracamy obiekt z wynikami
                 resolve({ ping: minPing, jitter: jitter });
             } else {
                 resolve({ ping: 0, jitter: 0 });
@@ -225,7 +220,7 @@ export function runPing() {
     });
 }
 
-// --- LOADED PING RUNNER (Ping w tle) ---
+// --- LOADED PING RUNNER ---
 export class LoadedPingRunner {
     constructor(onUpdate) {
         this.pings = [];
@@ -254,17 +249,11 @@ export class LoadedPingRunner {
             const now = performance.now();
             const latency = now - this.startTime;
             this.pings.push(latency);
-            
-            // Raportuj najnowszy ping
             if (this.onUpdate) this.onUpdate(latency);
-
-            // Następny ping za 1000ms (1s)
             setTimeout(() => this.sendPing(), 1000);
         };
 
-        this.ws.onerror = () => {
-            // Cicha porażka w tle
-        };
+        this.ws.onerror = () => {};
     }
 
     sendPing() {
@@ -279,10 +268,7 @@ export class LoadedPingRunner {
             this.ws.close();
             this.ws = null;
         }
-        
         if (this.pings.length === 0) return 0;
-        
-        // Zwracamy średni ping pod obciążeniem
         const avg = this.pings.reduce((a,b) => a+b, 0) / this.pings.length;
         return avg;
     }
@@ -329,7 +315,6 @@ class SpeedTestEngine {
         
         worker.onerror = (err) => {
              console.error(`Worker ${id} error:`, err);
-             // PRZYWRÓCONO: Logowanie błędu workera
              sendLogToDocker(`[Worker ${id}] ERROR: ${err.message}`);
         };
 
@@ -340,7 +325,6 @@ class SpeedTestEngine {
                     this.workerResults.set(id, e.data.bytes);
                 }
             } 
-            // PRZYWRÓCONO: Obsługa logów z workera
             else if (e.data.type === 'log') {
                 const msg = `[Worker ${id}] ${e.data.text.replace('[Worker] ', '')}`;
                 sendLogToDocker(msg);
@@ -377,7 +361,6 @@ class SpeedTestEngine {
             this.workerResults.set(id, 0);
         }
         
-        // PRZYWRÓCONO: Logowanie dodania workera
         sendLogToDocker(`[Engine] Worker added (ID: ${id}). Target: ${config.url}`);
     }
 
@@ -386,7 +369,6 @@ class SpeedTestEngine {
         const workerObj = this.activeWorkers.pop(); 
         if (workerObj) {
             workerObj.worker.terminate();
-            // PRZYWRÓCONO: Logowanie usunięcia workera
             sendLogToDocker(`[Engine] Worker killed (ID: ${workerObj.id}).`);
         }
     }
@@ -397,7 +379,6 @@ class SpeedTestEngine {
         this.uiSpeed = 0;
         this.prevUiSpeed = 0;
 
-        // PRZYWRÓCONO: Logowanie startu
         sendLogToDocker(`[Engine] Starting ${this.type.toUpperCase()} test. Threads: ${this.startThreads}->${this.maxThreads}`);
 
         if(el('thread-badge')) el('thread-badge').style.opacity = '1';
@@ -409,7 +390,6 @@ class SpeedTestEngine {
         setTimeout(() => {
             if(this.status === 'warmup' && this.maxThreads > 1) {
                 this.status = 'scaling';
-                // PRZYWRÓCONO: Logowanie zmiany fazy
                 sendLogToDocker(`[Engine] Phase change: Warmup -> Scaling`);
             }
         }, 800);
@@ -509,7 +489,6 @@ class SpeedTestEngine {
             if (this.activeWorkers.length < this.maxThreads) {
                 this.addWorker();
                 this.stableCount = 0; 
-                // PRZYWRÓCONO: Logowanie force ramp-up
                 if (forceScaling) {
                     sendLogToDocker(`[Engine] 🚀 Force Ramp-up (Stable but < 4 threads). Speed: ${this.currentInstantSpeed.toFixed(0)} Mbps`);
                 }
@@ -519,7 +498,6 @@ class SpeedTestEngine {
         } 
         else if (isCrash) {
             if (this.currentInstantSpeed > 50) {
-                // PRZYWRÓCONO: Logowanie zatłoczenia
                 sendLogToDocker(`[Engine] 🛑 Congestion detected (Drop ${(growth*100).toFixed(1)}%).`);
                 this.removeLastWorker();
                 this.status = 'sustain'; 
@@ -528,7 +506,6 @@ class SpeedTestEngine {
         else {
             this.stableCount++;
             if (this.stableCount >= 5) {
-                // PRZYWRÓCONO: Logowanie plateau
                 sendLogToDocker(`[Engine] 📊 Plateau detected.`);
                 this.status = 'sustain';
             }
@@ -539,7 +516,6 @@ class SpeedTestEngine {
     stop() {
         clearInterval(this.timer);
         clearInterval(this.processTimer);
-        // PRZYWRÓCONO: Logowanie zakończenia
         sendLogToDocker(`[Engine] Test finished. Threads active: ${this.activeWorkers.length}`);
         if(el('thread-badge')) el('thread-badge').style.opacity = '0.5';
         this.activeWorkers.forEach(w => w.worker.terminate());
@@ -554,9 +530,7 @@ export function runDownload() {
         let maxT = (THREADS === 1) ? 1 : THREADS;
         if (THREADS > 1 && isMobileDevice()) maxT = Math.min(maxT, 8); 
         const engine = new SpeedTestEngine('download', maxT);
-        const currentGauge = getGaugeInstance();
 
-        // Uruchamiamy Ping w tle
         const pingRunner = new LoadedPingRunner((latency) => {
             el('ping-dl-val').innerText = latency.toFixed(0);
         });
@@ -567,13 +541,15 @@ export function runDownload() {
                 checkGaugeRange(Math.max(speed, rawSpeed)); 
 
                 if(el('thread-count')) el('thread-count').innerText = activeThreads;
-                let displaySpeed = (currentUnit === 'mbs') ? speed / 8 : speed;
-                if (currentGauge) currentGauge.value = displaySpeed; 
+                
+                // ZMIANA: Użycie nowej funkcji ECharts zamiast przypisania do .value
+                setGaugeValue(speed);
+                
                 el('down-val').textContent = formatSpeed(speed); 
                 updateChart('down', speed);
             },
             (finalSpeed) => {
-                const avgLoadedPing = pingRunner.stop(); // Zatrzymujemy ping
+                const avgLoadedPing = pingRunner.stop(); 
                 setLastResultDown(finalSpeed);
                 resolve({ speed: finalSpeed, ping: avgLoadedPing });
             }
@@ -588,9 +564,7 @@ export function runUpload() {
             maxT = isMobileDevice() ? Math.min(maxT, 8) : Math.min(maxT, 16);
         }
         const engine = new SpeedTestEngine('upload', maxT);
-        const currentGauge = getGaugeInstance();
 
-        // Uruchamiamy Ping w tle
         const pingRunner = new LoadedPingRunner((latency) => {
             el('ping-ul-val').innerText = latency.toFixed(0);
         });
@@ -601,8 +575,10 @@ export function runUpload() {
                 checkGaugeRange(Math.max(speed, rawSpeed));
 
                 if(el('thread-count')) el('thread-count').innerText = activeThreads;
-                let displaySpeed = (currentUnit === 'mbs') ? speed / 8 : speed;
-                if (currentGauge) currentGauge.value = displaySpeed; 
+                
+                // ZMIANA: ECharts update
+                setGaugeValue(speed);
+                
                 el('up-val').textContent = formatSpeed(speed);
                 updateChart('up', speed);
             },

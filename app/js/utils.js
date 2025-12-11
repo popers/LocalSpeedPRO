@@ -1,4 +1,6 @@
 import { translations } from './config.js';
+// Importujemy funkcję aktualizacji tekstów z gauge.js
+import { updateGaugeTexts } from './gauge.js';
 
 // --- Podstawowe funkcje DOM ---
 export const el = (id) => document.getElementById(id);
@@ -11,10 +13,10 @@ export let primaryColor = localStorage.getItem('ls_primary_color');
 export let lastResultDown = 0; 
 export let lastResultUp = 0;   
 
-// --- WYKRYWANIE URZĄDZENIA (NOWOŚĆ) ---
+// --- WYKRYWANIE URZĄDZENIA ---
 export const isMobile = () => {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
-           || (window.innerWidth < 900); // Traktujemy tablety/wąskie okna też jako mobile dla bezpieczeństwa
+           || (window.innerWidth < 900);
 };
 
 // --- Settery dla zmiennych stanu ---
@@ -132,12 +134,8 @@ export function updateTexts(gaugeInstance) {
         }
     });
 
-    if(gaugeInstance) {
-        gaugeInstance.update({ 
-            title: translations[lang].gauge_title,
-            units: getUnitLabel()
-        });
-    }
+    // ZMIANA: Wywołanie dedykowanej funkcji z gauge.js
+    updateGaugeTexts();
     
     document.documentElement.setAttribute('lang', lang);
 
