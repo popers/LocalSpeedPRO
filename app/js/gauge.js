@@ -4,8 +4,8 @@ import { translations } from './config.js';
 let chart = null;
 let currentMaxLimit = 0;
 let isResetting = false;
+let resizeHandler = null; 
 
-// Pobiera instancję wykresu (potrzebne czasem do resize)
 export function getGaugeInstance() {
     return chart;
 }
@@ -14,20 +14,16 @@ export function setIsResetting(state) {
     isResetting = state;
 }
 
-// Ustawia wartość na wskaźniku
 export function setGaugeValue(val) {
     if (!chart || isResetting) return;
     
-    // Konwersja dla MB/s jeśli trzeba
     let displayVal = val;
     if (currentUnit === 'mbs') displayVal = val / 8;
 
-    // ZABEZPIECZENIE: Eliminacja NaN i null/undefined
     if (displayVal === null || displayVal === undefined || isNaN(displayVal)) {
         displayVal = 0;
     }
     
-    // Zaokrąglamy wartość przekazywaną do wskazówki (logika animacji)
     displayVal = Math.round(displayVal * 100) / 100;
 
     chart.setOption({
@@ -40,30 +36,27 @@ export function setGaugeValue(val) {
     });
 }
 
-// Konfiguracja skali (identyczna logika progów jak wcześniej, ale zwraca config dla ECharts)
 function getScaleConfig(value, unit, mainColor, isDark) {
-    // Progi skalowania
     let tiers = [];
 
     if (unit === 'mbs') {
         tiers = [
-            { max: 125, step: 25 },    // ~1 Gbps
-            { max: 315, step: 45 },    // ~2.5 Gbps
-            { max: 625, step: 125 },   // ~5 Gbps
-            { max: 1250, step: 250 },  // ~10 Gbps
-            { max: 2500, step: 500 }   // ~20 Gbps
+            { max: 125, step: 25 },
+            { max: 315, step: 45 },
+            { max: 625, step: 125 },
+            { max: 1250, step: 250 },
+            { max: 2500, step: 500 }
         ];
     } else {
         tiers = [
-            { max: 1000, step: 200 },  // 1 Gbps
-            { max: 2500, step: 500 },  // 2.5 Gbps
-            { max: 5000, step: 1000 }, // 5 Gbps
-            { max: 10000, step: 2000 },// 10 Gbps
-            { max: 20000, step: 4000 } // 20 Gbps
+            { max: 1000, step: 200 },
+            { max: 2500, step: 500 },
+            { max: 5000, step: 1000 },
+            { max: 10000, step: 2000 },
+            { max: 20000, step: 4000 }
         ];
     }
 
-    // Wybór tieru
     let selectedTier = tiers[0];
     for (let tier of tiers) {
         if (value > tier.max * 0.996) {
@@ -73,162 +66,182 @@ function getScaleConfig(value, unit, mainColor, isDark) {
             break;
         }
     }
-    // Fallback dla ultra prędkości
+    
     if (value > selectedTier.max) {
         selectedTier = { max: Math.ceil(value / 1000) * 1000 + 1000, step: 1000 };
     }
 
     const splitNumber = selectedTier.max / selectedTier.step;
-
-    // Kolory osi
-    const axisColor = isDark ? '#333' : '#e0e0e0';
+    const trackColor = isDark ? '#333' : '#e0e0e0';
     
-    // Definiujemy kolory segmentów
-    const colorStops = [
-        [0.3, hexToRgba(mainColor, 0.4)],
-        [0.7, hexToRgba(mainColor, 0.7)],
-        [1, mainColor]
-    ];
-
     return {
         max: selectedTier.max,
         splitNumber: splitNumber,
-        axisLineColor: colorStops, 
-        bgColor: axisColor
+        trackColor: trackColor
     };
 }
 
-// Inicjalizacja ECharts
 export function initGauge() {
     const dom = document.getElementById('speed-gauge');
     if (!dom) return;
 
-    // Jeśli wykres już istnieje, usuwamy go (ważne przy zmianie motywu/resize)
     if (chart) {
         chart.dispose();
+    }
+    
+    if (resizeHandler) {
+        window.removeEventListener('resize', resizeHandler);
     }
 
     chart = echarts.init(dom, null, { renderer: 'canvas' });
 
     const isDark = document.body.getAttribute('data-theme') === 'dark';
     const mainColor = getPrimaryColor();
-    const textColor = isDark ? '#fff' : '#2d3436';
-    const tickColor = isDark ? '#666' : '#ccc';
+    const textColor = isDark ? '#ffffff' : '#2d3436';
+    const subTextColor = isDark ? '#bbbbbb' : '#666666';
     
-    // Startowa konfiguracja skali (dla 0)
     const config = getScaleConfig(0, currentUnit, mainColor, isDark);
     currentMaxLimit = config.max;
 
+    // --- KONFIGURACJA KĄTÓW (300 stopni) ---
+    const START_ANGLE = 230;
+    const END_ANGLE = -50;
+
+    // --- GRUBOŚĆ SKALI ---
+    const SCALE_WIDTH = 28; // Zwiększono z 18 do 28
+
+    // --- LOGIKA RESPANSYWNOŚCI ---
+    const isMobile = window.innerWidth < 900;
+    
+    const initialRadius = isMobile ? '113%' : '113%';
+    const initialCenter = isMobile ? ['50%', '57%'] : ['50%', '57%'];
+
     const option = {
-        // ZMIANA: Bardzo szybka animacja (50ms), aby wskazówka nadążała w trakcie testu
-        animationDuration: 100,
-        animationDurationUpdate: 100,
+        animationDuration: 150,
+        animationDurationUpdate: 150,
         
         series: [
             {
                 type: 'gauge',
-                // ZMIANA: Powiększenie licznika
-                radius: '115%',
-                // ZMIANA: Przesunięcie w dół na 59% (naprawa ucinania góry)
-                center: ['50%', '58%'],
-                startAngle: 225,
-                endAngle: -45,
+                radius: initialRadius,
+                center: initialCenter,
+                
+                startAngle: START_ANGLE, 
+                endAngle: END_ANGLE,   
                 min: 0,
                 max: config.max,
                 splitNumber: config.splitNumber,
                 
-                // Oś główna (tło paska)
+                // --- 1. TOR (TŁO) ---
                 axisLine: {
                     lineStyle: {
-                        width: 15,
-                        color: [[1, config.bgColor]] 
+                        width: SCALE_WIDTH, // Używamy nowej grubości
+                        color: [[1, config.trackColor]],
+                        shadowBlur: 0
                     }
                 },
-                // Pasek postępu (to co się wypełnia)
+
+                // --- 2. PASEK POSTĘPU ---
                 progress: {
                     show: true,
-                    width: 15,
+                    width: SCALE_WIDTH, // Używamy nowej grubości
+                    roundCap: false, 
                     itemStyle: {
                         color: {
                             type: 'linear',
                             x: 0, y: 0, x2: 1, y2: 0,
                             colorStops: [
-                                { offset: 0, color: hexToRgba(mainColor, 0.3) },
-                                { offset: 1, color: mainColor }
+                                { offset: 0, color: hexToRgba(mainColor, 0.2) }, 
+                                { offset: 1, color: mainColor } 
                             ]
-                        }
+                        },
+                        shadowBlur: 5,
+                        shadowColor: hexToRgba(mainColor, 0.4)
                     }
                 },
-                // Wskazówka
+
+                // --- 3. WSKAZÓWKA ---
                 pointer: {
                     show: true,
-                    length: '75%',
-                    width: 5,
-                    itemStyle: { color: mainColor }
+                    icon: 'path://M-2 10 L 2 10 L 0 -100 Z',
+                    length: '85%',
+                    width: 10,
+                    offsetCenter: [0, '0%'],
+                    itemStyle: { 
+                        color: mainColor,
+                        shadowBlur: 8,
+                        shadowColor: hexToRgba(mainColor, 0.5)
+                    }
                 },
-                // Kotwica wskazówki
+
+                // --- 4. KOTWICA ---
                 anchor: {
                     show: true,
                     showAbove: true,
-                    size: 14,
-                    itemStyle: { borderWidth: 2, borderColor: mainColor, color: isDark ? '#1e1e1e' : '#fff' }
+                    size: 20, // Lekko powiększona kotwica
+                    itemStyle: { 
+                        borderWidth: 5, 
+                        borderColor: mainColor, 
+                        color: isDark ? '#1a1a1a' : '#fff',
+                        shadowBlur: 5,
+                        shadowColor: hexToRgba(mainColor, 0.3)
+                    }
                 },
-                // Kreski podziałki małe
+
+                // --- 5. PODZIAŁKA ---
                 axisTick: {
-                    distance: -15, 
+                    distance: -SCALE_WIDTH, // Ticki wewnątrz paska
                     length: 6,
-                    lineStyle: { color: tickColor, width: 1 }
+                    splitNumber: 5,
+                    lineStyle: { 
+                        color: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)', 
+                        width: 1 
+                    }
                 },
-                // Kreski podziałki duże
                 splitLine: {
-                    distance: -15,
-                    length: 12,
-                    lineStyle: { color: tickColor, width: 2 }
+                    distance: -SCALE_WIDTH, // Linie podziału wewnątrz paska
+                    length: SCALE_WIDTH,    // Na całą szerokość
+                    lineStyle: { 
+                        color: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.8)', 
+                        width: 2 
+                    }
                 },
-                // Liczby na osi
+
+                // --- 6. LICZBY NA OSI ---
                 axisLabel: {
-                    distance: 25,
-                    color: textColor,
-                    fontSize: 12,
-                    fontFamily: 'Roboto'
-                },
-                // Tytuł (np. PRĘDKOŚĆ)
-                title: {
-                    // ZMIANA: Ukrycie napisu "Speed/Prędkość" pod licznikiem
-                    show: false,
-                    offsetCenter: [0, '85%'],
-                    fontSize: 14,
-                    color: textColor,
+                    distance: 40, // Odsunięte bardziej ze względu na grubszy pasek
+                    color: subTextColor,
+                    fontSize: 14, 
+                    fontFamily: 'Roboto',
                     fontWeight: 500
                 },
-                // Jednostka i wartość w środku
+
+                title: { show: false },
+
+                // --- 8. GŁÓWNA WARTOŚĆ (WYŁĄCZONA) ---
                 detail: {
+                    show: false, 
                     valueAnimation: true,
-                    // ZMIANA: Zabezpieczenie przed NaN i wymuszenie jednego miejsca po przecinku
-                    formatter: function (value) {
-                        if (value === null || value === undefined || isNaN(value)) {
-                            return '0.0';
-                        }
-                        return parseFloat(value).toFixed(1);
-                    },
-                    color: mainColor,
-                    fontSize: 32,
-                    fontWeight: 'bold',
-                    offsetCenter: [0, '60%'],
-                    fontFamily: 'Roboto Mono'
+                    formatter: (val) => val ? parseFloat(val).toFixed(1) : '0.0',
+                    color: textColor,
+                    fontSize: 42,
+                    fontWeight: '700',
+                    offsetCenter: [0, '40%'],
+                    fontFamily: 'Roboto Mono',
                 },
                 data: [{
                     value: 0,
                     name: translations[lang].gauge_title || 'Speed'
                 }]
             },
-            // Druga seria - tylko dla etykiety jednostki pod wartością
+            
+            // --- SERIA 2: JEDNOSTKA (WYŁĄCZONA WIZUALNIE) ---
             {
                 type: 'gauge',
-                radius: '115%', // Musi być takie samo jak wyżej
-                center: ['50%', '58%'], // Musi być takie samo jak wyżej
-                startAngle: 225,
-                endAngle: -45,
+                radius: initialRadius,
+                center: initialCenter,
+                startAngle: START_ANGLE,
+                endAngle: END_ANGLE,
                 min: 0, max: 100,
                 axisLine: { show: false },
                 progress: { show: false },
@@ -236,12 +249,7 @@ export function initGauge() {
                 axisTick: { show: false },
                 splitLine: { show: false },
                 axisLabel: { show: false },
-                title: {
-                    show: true,
-                    offsetCenter: [0, '95%'], // Pod tytułem głównym
-                    color: hexToRgba(textColor, 0.6),
-                    fontSize: 12
-                },
+                title: { show: true },
                 detail: { show: false },
                 data: [{ value: 0, name: getUnitLabel() }]
             }
@@ -250,18 +258,30 @@ export function initGauge() {
 
     chart.setOption(option);
     
-    // Obsługa responsywności
-    window.addEventListener('resize', () => {
-        chart && chart.resize();
-    });
+    // --- OBSŁUGA ZMIANY ROZMIARU OKNA ---
+    resizeHandler = () => {
+        if (!chart) return;
+        chart.resize();
+        
+        const isSmall = window.innerWidth < 900;
+        const newRadius = isSmall ? '113%' : '113%';
+        const newCenter = isSmall ? ['50%', '57%'] : ['50%', '57%'];
+        
+        chart.setOption({
+            series: [
+                { radius: newRadius, center: newCenter },
+                { radius: newRadius, center: newCenter }
+            ]
+        });
+    };
+    
+    window.addEventListener('resize', resizeHandler);
 }
 
-// Funkcja do przeładowania (np. zmiana motywu, zmiana jednostki)
 export function reloadGauge() {
     initGauge();
 }
 
-// Sprawdza zakres i aktualizuje skalę wykresu
 export function checkGaugeRange(speedMbps, forceUpdate = false) {
     if (!chart) return;
     
@@ -272,25 +292,25 @@ export function checkGaugeRange(speedMbps, forceUpdate = false) {
     const mainColor = getPrimaryColor();
     const newConfig = getScaleConfig(val, currentUnit, mainColor, isDark);
 
-    // Aktualizujemy tylko jeśli max się zmienił
     if (newConfig.max !== currentMaxLimit || forceUpdate) {
         currentMaxLimit = newConfig.max;
         
         chart.setOption({
             series: [{
                 max: newConfig.max,
-                splitNumber: newConfig.splitNumber
+                splitNumber: newConfig.splitNumber,
+                axisLine: {
+                    lineStyle: { color: [[1, newConfig.trackColor]] }
+                }
             }]
         });
     }
 }
 
-// Animacja resetowania do zera
 export function resetGauge() {
     if (!chart) return;
     setIsResetting(true);
     
-    // ZMIANA: Wydłużamy czas animacji dla efektu powolnego opadania (1.5s)
     chart.setOption({
         animationDurationUpdate: 1500,
         series: [{
@@ -298,10 +318,8 @@ export function resetGauge() {
         }]
     });
 
-    // Czekamy na zakończenie animacji, po czym przywracamy szybką animację
     setTimeout(() => {
         setIsResetting(false);
-        // Przywracamy szybką reakcję dla kolejnego testu
         if (chart) {
             chart.setOption({
                 animationDurationUpdate: 100
@@ -310,23 +328,12 @@ export function resetGauge() {
     }, 1500); 
 }
 
-// Aktualizacja tekstów (język, jednostka) bez pełnego reloadu
 export function updateGaugeTexts() {
     if (!chart) return;
-    const isDark = document.body.getAttribute('data-theme') === 'dark';
-    const textColor = isDark ? '#fff' : '#2d3436';
-
     chart.setOption({
         series: [
-            {
-                data: [{ name: translations[lang].gauge_title || 'Speed' }],
-                axisLabel: { color: textColor },
-                title: { color: textColor }
-            },
-            {
-                data: [{ name: getUnitLabel() }],
-                title: { color: hexToRgba(textColor, 0.6) }
-            }
+            { data: [{ name: translations[lang].gauge_title || 'Speed' }] },
+            { data: [{ name: getUnitLabel() }] }
         ]
     });
 }

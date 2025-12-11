@@ -19,7 +19,7 @@ export const translations = {
         up: "Wysyłanie", 
         
         // NOWE ETYKIETY
-        lbl_ping_idle: "Ping (Idle)",
+        lbl_ping_idle: "Ping",
         lbl_ping_dl: "Ping (DL)",
         lbl_ping_ul: "Ping (UL)",
         lbl_jitter: "Jitter",
@@ -137,7 +137,7 @@ export const translations = {
         down: "Download", 
         up: "Upload", 
         
-        lbl_ping_idle: "Ping (Idle)",
+        lbl_ping_idle: "Ping",
         lbl_ping_dl: "Ping (DL)",
         lbl_ping_ul: "Ping (UL)",
         lbl_jitter: "Jitter",
