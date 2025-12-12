@@ -427,7 +427,7 @@ class SpeedTestEngine {
                     }
                 }
 
-                const alpha = (this.type === 'upload') ? 0.1 : 0.3;
+                const alpha = (this.type === 'upload') ? 0.1 : 0.15;
                 
                 if (this.currentInstantSpeed === 0) this.currentInstantSpeed = instSpeed;
                 else this.currentInstantSpeed = (instSpeed * alpha) + (this.currentInstantSpeed * (1 - alpha));
@@ -480,7 +480,7 @@ class SpeedTestEngine {
             return;
         }
         const growth = (this.currentInstantSpeed - this.prevSpeed) / this.prevSpeed;
-        const dropThreshold = (this.type === 'upload') ? -0.30 : -0.20;
+        const dropThreshold = (this.type === 'upload') ? -0.30 : -0.30;
 
         const isCrash = (growth < dropThreshold);
         const forceScaling = (!isCrash && this.activeWorkers.length < 4 && this.currentInstantSpeed > 5);
