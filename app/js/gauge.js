@@ -249,7 +249,7 @@ export function initGauge() {
                 axisTick: { show: false },
                 splitLine: { show: false },
                 axisLabel: { show: false },
-                title: { show: true },
+                title: { show: false },
                 detail: { show: false },
                 data: [{ value: 0, name: getUnitLabel() }]
             }
