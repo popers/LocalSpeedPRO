@@ -444,8 +444,8 @@ class SpeedTestEngine {
                 avgSpeed = this.uiSpeed;
             }
 
-            let riseFactor = 0.12; 
-            let fallFactor = 0.06; 
+            let riseFactor = 0.24; 
+            let fallFactor = 0.12; 
 
             const uiAlpha = (avgSpeed > this.uiSpeed) ? riseFactor : fallFactor;
             this.uiSpeed = (avgSpeed * uiAlpha) + (this.uiSpeed * (1 - uiAlpha));
