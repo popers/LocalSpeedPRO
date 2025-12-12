@@ -2,6 +2,7 @@ import { el, getPrimaryColor, hexToRgba } from './utils.js';
 
 let chartDown = null;
 let chartUp = null;
+let resizeHandler = null;
 
 let storedData = {
     down: [],
@@ -9,50 +10,67 @@ let storedData = {
 };
 const MAX_POINTS = 60; 
 
-function initMiniChart(canvasId, colorHex, dataPoints) {
-    const canvas = el(canvasId);
-    if (!canvas) return null;
-    
-    const ctx = canvas.getContext('2d');
-    
-    // ZMIANA: Używamy przekazanego koloru Hex do stworzenia gradientu RGBA
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, hexToRgba(colorHex, 0.4)); // Góra: 40% krycia
-    gradient.addColorStop(1, hexToRgba(colorHex, 0.0)); // Dół: 0% krycia
+function initEChart(domId, colorHex, dataPoints) {
+    const dom = el(domId);
+    if (!dom) return null;
 
-    const labels = new Array(dataPoints.length).fill('');
+    // Jeżeli instancja już istnieje, usuwamy ją przed stworzeniem nowej
+    const existing = echarts.getInstanceByDom(dom);
+    if (existing) {
+        existing.dispose();
+    }
+    
+    const chart = echarts.init(dom, null, { renderer: 'canvas' });
 
-    return new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels, 
-            datasets: [{
-                data: [...dataPoints], 
-                borderColor: colorHex, // Pełny kolor Hex dla linii
-                backgroundColor: gradient, 
-                borderWidth: 2, 
-                pointRadius: 0, 
-                fill: true,
-                tension: 0.4, 
-                cubicInterpolationMode: 'monotone'
-            }]
+    // Przygotowanie pustych etykiet dla osi X
+    const labels = new Array(MAX_POINTS).fill('');
+    // Uzupełnienie danych zerami, jeśli jest ich mniej niż MAX_POINTS (dla ładniejszego startu)
+    // Chociaż ECharts radzi sobie z mniejszą ilością danych, tutaj po prostu przekażemy to co mamy.
+
+    const option = {
+        grid: {
+            left: -10,
+            right: -10,
+            top: 0,
+            bottom: 0,
+            containLabel: false
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: false, 
-            devicePixelRatio: window.devicePixelRatio || 1, 
-            plugins: {
-                legend: { display: false },
-                tooltip: { enabled: false }
+        xAxis: {
+            type: 'category',
+            show: false,
+            boundaryGap: false,
+            data: labels
+        },
+        yAxis: {
+            type: 'value',
+            show: false,
+            min: 0
+        },
+        series: [{
+            type: 'line',
+            // --- KONFIGURACJA WYGŁADZANIA ---
+            // false = brak wygładzania (linie proste)
+            // true = domyślne wygładzanie (~0.5)
+            // wartość 0.0 - 1.0 = stopień krzywizny (np. 0.3 to lekkie, 0.8 to bardzo okrągłe)
+            smooth: 0.8,
+            showSymbol: false,
+            lineStyle: {
+                width: 2,
+                color: colorHex
             },
-            scales: {
-                x: { display: false },
-                y: { display: false, min: 0 }
+            areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: hexToRgba(colorHex, 0.4) }, // Góra: 40% krycia
+                    { offset: 1, color: hexToRgba(colorHex, 0.0) }  // Dół: 0% krycia
+                ])
             },
-            layout: { padding: 0 }
-        }
-    });
+            data: [...dataPoints],
+            animation: true // Wyłączamy animacje dla lepszej wydajności przy szybkim odświeżaniu
+        }]
+    };
+
+    chart.setOption(option);
+    return chart;
 }
 
 export function resetCharts() {
@@ -60,42 +78,46 @@ export function resetCharts() {
     storedData.up = [];
 
     if(chartDown) {
-        chartDown.data.labels = [];
-        chartDown.data.datasets[0].data = [];
-        chartDown.update();
+        chartDown.setOption({ series: [{ data: [] }] });
     }
     if(chartUp) {
-        chartUp.data.labels = [];
-        chartUp.data.datasets[0].data = [];
-        chartUp.update();
+        chartUp.setOption({ series: [{ data: [] }] });
     }
 }
 
 export function initCharts() {
-    if (chartDown) { chartDown.destroy(); chartDown = null; }
-    if (chartUp) { chartUp.destroy(); chartUp = null; }
+    // Czyszczenie starego handlera resize
+    if (resizeHandler) {
+        window.removeEventListener('resize', resizeHandler);
+    }
 
-    // ZMIANA: Pobieramy dynamiczny kolor
     const themeColor = getPrimaryColor();
     
-    chartDown = initMiniChart('chart-down', themeColor, storedData.down); 
-    chartUp = initMiniChart('chart-up', themeColor, storedData.up); 
+    chartDown = initEChart('chart-down', themeColor, storedData.down); 
+    chartUp = initEChart('chart-up', themeColor, storedData.up); 
+
+    // Nowy handler resize
+    resizeHandler = () => {
+        if (chartDown) chartDown.resize();
+        if (chartUp) chartUp.resize();
+    };
+    window.addEventListener('resize', resizeHandler);
 }
 
 export function updateChart(type, value) {
     const buffer = type === 'down' ? storedData.down : storedData.up;
+    
+    // Zarządzanie buforem danych
     if (buffer.length > MAX_POINTS) buffer.shift();
     buffer.push(value);
 
     const chart = type === 'down' ? chartDown : chartUp;
     if(!chart) return;
     
-    if(chart.data.labels.length > MAX_POINTS) {
-        chart.data.labels.shift();
-        chart.data.datasets[0].data.shift();
-    }
-    chart.data.labels.push('');
-    chart.data.datasets[0].data.push(value);
-    
-    chart.update('none'); 
+    // Aktualizacja danych w wykresie
+    chart.setOption({
+        series: [{
+            data: buffer
+        }]
+    });
 }
