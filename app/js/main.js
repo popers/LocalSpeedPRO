@@ -14,7 +14,7 @@ import {
     timeout 
 } from '/js/utils.js';
 import { translations, TEST_DURATION, THREADS, setThreads } from '/js/config.js';
-import { initGauge, reloadGauge, resetGauge, getGaugeInstance } from '/js/gauge.js'; // ZMIANA importu
+import { initGauge, reloadGauge, resetGauge, getGaugeInstance } from '/js/gauge.js';
 import { initCharts, resetCharts } from '/js/charts.js';
 import { loadSettings, saveSettings, saveResult } from '/js/data_sync.js';
 import { initHistoryEvents, loadHistory, updateStatTiles } from '/js/history_ui.js';
@@ -72,11 +72,16 @@ async function startTest() {
         await new Promise(r => setTimeout(r, 800));
 
         // 1. PING IDLE & JITTER
-        pingResults = await Promise.race([runPing(), timeout(4000)]);
+        // Zwiększamy timeout dla mobile, aby dać czas na nawiązanie połączenia WS
+        pingResults = await Promise.race([runPing(), timeout(6000)]);
         if (!pingResults) throw new Error("Ping error");
 
         el('ping-idle-val').textContent = pingResults.ping.toFixed(1);
         el('jitter-val').textContent = pingResults.jitter.toFixed(1);
+
+        // POPRAWKA: Dodajemy opóźnienie, aby przeglądarka (szczególnie mobile)
+        // zdążyła przerysować wynik Pingu przed zamrożeniem wątku przez Workery.
+        await new Promise(r => setTimeout(r, 1000));
 
         // 2. DOWNLOAD
         el('card-down').classList.add('active');
@@ -85,7 +90,7 @@ async function startTest() {
         el('ping-dl-val').textContent = downResult.ping.toFixed(1);
         el('card-down').classList.remove('active');
 
-        // Reset wskazówki - ZMIANA: Wydłużony czas oczekiwania (1600ms) dla wolniejszej animacji
+        // Reset wskazówki
         resetGauge();
         await new Promise(r => setTimeout(r, 1600)); 
 
@@ -96,7 +101,7 @@ async function startTest() {
         el('ping-ul-val').textContent = upResult.ping.toFixed(1);
         el('card-up').classList.remove('active');
 
-        // Reset wskazówki - ZMIANA: Wydłużony czas oczekiwania
+        // Reset wskazówki
         resetGauge();
         await new Promise(r => setTimeout(r, 1600)); 
 

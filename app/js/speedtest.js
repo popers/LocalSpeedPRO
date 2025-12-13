@@ -1,6 +1,6 @@
 import { el, formatSpeed, currentUnit, setLastResultDown, setLastResultUp } from '/js/utils.js';
 import { THREADS, TEST_DURATION } from '/js/config.js';
-import { checkGaugeRange, setGaugeValue } from '/js/gauge.js'; // ZMIANA importu
+import { checkGaugeRange, setGaugeValue } from '/js/gauge.js';
 import { updateChart } from '/js/charts.js';
 
 // --- LOCAL UTILS ---
@@ -169,18 +169,28 @@ export function runPing() {
         let pings = [];
         let count = 0;
         let startTime = 0;
+        let isDone = false;
 
         ws.onopen = () => {
-            sendPing();
+            // POPRAWKA: Małe opóźnienie dla iOS/Safari po adresie IP
+            setTimeout(sendPing, 50);
         };
 
         const sendPing = () => {
-            if(ws.readyState !== WebSocket.OPEN) return;
+            if(isDone || ws.readyState !== WebSocket.OPEN) return;
             startTime = performance.now();
-            ws.send(startTime.toString());
+            
+            // POPRAWKA: Bezpieczne wysyłanie (try/catch)
+            try {
+                ws.send(startTime.toString());
+            } catch(e) {
+                console.warn("WS send error, retrying...", e);
+                setTimeout(sendPing, 100);
+            }
         };
 
         ws.onmessage = (event) => {
+            if(isDone) return;
             const now = performance.now();
             const latency = now - startTime;
             
@@ -192,26 +202,35 @@ export function runPing() {
                 count++;
                 setTimeout(sendPing, 50);
             } else {
-                ws.close();
+                finishPing();
             }
         };
-
-        ws.onclose = () => {
+        
+        const finishPing = () => {
+            if(isDone) return;
+            isDone = true;
+            
             if (pings.length > 0) {
                 const minPing = Math.min(...pings);
                 const avgPing = pings.reduce((a,b) => a+b, 0) / pings.length;
                 const jitter = calculateJitter(pings);
                 
                 sendLogToDocker(`[Phase 1] Result: Min=${minPing.toFixed(2)}, Avg=${avgPing.toFixed(2)}, Jitter=${jitter.toFixed(2)}`);
+                ws.close();
                 resolve({ ping: minPing, jitter: jitter });
             } else {
+                ws.close();
                 resolve({ ping: 0, jitter: 0 });
             }
         };
 
+        ws.onclose = () => {
+            if(!isDone) finishPing();
+        };
+
         ws.onerror = (err) => {
             console.error("WS Ping Error", err);
-            resolve({ ping: 0, jitter: 0 }); 
+            // Nie kończymy od razu resolve'm, onclose zaraz wystrzeli
         };
         
         setTimeout(() => {
@@ -241,7 +260,7 @@ export class LoadedPingRunner {
         this.ws = new WebSocket(wsUrl);
 
         this.ws.onopen = () => {
-            this.sendPing();
+            setTimeout(() => this.sendPing(), 50);
         };
 
         this.ws.onmessage = () => {
@@ -259,7 +278,9 @@ export class LoadedPingRunner {
     sendPing() {
         if (!this.isRunning || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
         this.startTime = performance.now();
-        this.ws.send("ping");
+        try {
+            this.ws.send("ping");
+        } catch(e) {}
     }
 
     stop() {

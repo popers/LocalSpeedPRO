@@ -60,7 +60,7 @@ function initEChart(domId, colorHex, dataPoints) {
             },
             areaStyle: {
                 color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                    { offset: 0, color: hexToRgba(colorHex, 0.4) }, // Góra: 40% krycia
+                    { offset: 0, color: hexToRgba(colorHex, 0.7) }, // Góra: 40% krycia
                     { offset: 1, color: hexToRgba(colorHex, 0.0) }  // Dół: 0% krycia
                 ])
             },
