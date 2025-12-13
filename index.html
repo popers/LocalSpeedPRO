@@ -1,0 +1,167 @@
+
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="google-site-verification" content="BXGy2oyWiwClEGB2DYx3nfLh86a1kh5unuRKqiImGe0" />
+
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>LocalSpeed PRO | LocalSpeedPRO</title>
+<meta name="generator" content="Jekyll v3.10.0" />
+<meta property="og:title" content="LocalSpeed PRO" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="LocalSpeed PRO is a lightweight, self-hosted network performance testing tool designed for Docker." />
+<meta property="og:description" content="LocalSpeed PRO is a lightweight, self-hosted network performance testing tool designed for Docker." />
+<link rel="canonical" href="https://popers.github.io/LocalSpeedPRO/" />
+<meta property="og:url" content="https://popers.github.io/LocalSpeedPRO/" />
+<meta property="og:site_name" content="LocalSpeedPRO" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="LocalSpeed PRO" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","description":"LocalSpeed PRO is a lightweight, self-hosted network performance testing tool designed for Docker.","headline":"LocalSpeed PRO","name":"LocalSpeedPRO","url":"https://popers.github.io/LocalSpeedPRO/"}</script>
+<!-- End Jekyll SEO tag -->
+
+    <link rel="stylesheet" href="/LocalSpeedPRO/assets/css/style.css?v=fd7f4129cf1f1cb860484c49fe839280c019e48f">
+    <!-- start custom head snippets, customize with your own _includes/head-custom.html file -->
+
+<!-- Setup Google Analytics -->
+
+
+
+<!-- You can set your favicon here -->
+<!-- link rel="shortcut icon" type="image/x-icon" href="/LocalSpeedPRO/favicon.ico" -->
+
+<!-- end custom head snippets -->
+
+  </head>
+  <body>
+    <div class="container-lg px-3 my-5 markdown-body">
+      
+      <h1><a href="https://popers.github.io/LocalSpeedPRO/">LocalSpeedPRO</a></h1>
+      
+
+      <h1 id="localspeed-pro-">LocalSpeed PRO <img src="https://img.shields.io/badge/v0.3-purple" alt="version" /></h1>
+
+<p>A lightweight, self-hosted network performance testing tool designed for Docker. Built with a Python FastAPI backend and a vanilla JavaScript frontend using Web Workers to ensure accurate high-speed measurements for LAN and WAN environments.</p>
+
+<h3 id="features">Features:</h3>
+<ul>
+  <li>Measures Ping, Jitter, Download, and Upload speeds with support for Single and Multi-threaded connections.</li>
+  <li>Real-time visualization with gauges and charts; includes customizable Dark/Light themes.</li>
+  <li>Full measurement history with sorting, pagination, and CSV export.</li>
+  <li>Native authentication system plus <strong>OpenID Connect (OIDC)</strong> support for SSO integration.</li>
+  <li>Automated backups to Google Drive and manual SQL dump/restore capabilities.</li>
+</ul>
+
+<h3 id="screenshots">Screenshots:</h3>
+
+<p><strong>Dashboard</strong></p>
+
+<p><img alt="dashboard" src="https://github.com/user-attachments/assets/7eb27c9b-fa11-4282-bdce-6fa2e9b87f4b" /></p>
+
+<p><strong>OIDC Settings</strong></p>
+
+<p><img alt="oidc" src="https://github.com/user-attachments/assets/4e75f735-7561-4e0c-9f79-bb0a2b274746" /></p>
+
+<p><strong>Backup Settings</strong></p>
+
+<p><img alt="backup" src="https://github.com/user-attachments/assets/67ba92ef-0b98-450f-973e-2010d198efe2" /></p>
+
+<p><strong>Login page</strong></p>
+
+<p><img alt="login" src="https://github.com/user-attachments/assets/59de21d2-3d78-43af-98d3-b436b8bfd8e7" /></p>
+
+<p><strong>Personalization</strong></p>
+
+<p><img alt="personalization" src="https://github.com/user-attachments/assets/f0264238-8c2c-438a-b315-c47190efb896" /></p>
+
+<h3 id="-installation-docker">🚀 Installation (Docker)</h3>
+
+<p><strong>Docker Compose:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>services:
+  localspeedpro:
+    image: popers/localspeedpro:latest
+    container_name: localspeedpro_app
+    restart: unless-stopped
+    ports:
+      - ${APP_PORT:-8002}:80
+    environment:
+      - TZ=Europe/Amsterdam
+      - APP_USER=${APP_USER}
+      - APP_PASSWORD=${APP_PASSWORD}
+      - AUTH_ENABLED=${AUTH_ENABLED:-true}
+      - DB_TYPE=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - ./logs:/app/logs 
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ls_network
+  db:
+    image: mariadb:10.11
+    container_name: localspeedpro_db
+    restart: unless-stopped
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+      --innodb-use-native-aio=0
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - TZ=Europe/Amsterdam
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - ls_network
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h localhost -u root -p${DB_ROOT_PASSWORD} || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+volumes:
+  db_data: null
+networks:
+  ls_network:
+    driver: bridge
+
+</code></pre></div></div>
+<p><strong>.env:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>APP_PORT=8002
+APP_USER=admin
+APP_PASSWORD=admin
+AUTH_ENABLED=true
+DB_NAME=localspeedpro
+DB_USER=ls_user
+DB_PASSWORD=dbpassword
+DB_ROOT_PASSWORD=dbrootpassword
+</code></pre></div></div>
+
+<p><strong>Start the containers:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker compose up -d
+</code></pre></div></div>
+
+<p>Your LocalSpeed PRO dashboard will be accessible at: http://your-server-ip:8002</p>
+
+
+      
+      <div class="footer border-top border-gray-light mt-5 pt-3 text-right text-gray">
+        This site is open source. <a href="https://github.com/popers/LocalSpeedPRO/edit/main/README.md">Improve this page</a>.
+      </div>
+      
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/anchor-js/4.1.0/anchor.min.js" integrity="sha256-lZaRhKri35AyJSypXXs4o6OPFTbTmUoltBbDCbdzegg=" crossorigin="anonymous"></script>
+    <script>anchors.add();</script>
+  </body>
+</html>
