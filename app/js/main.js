@@ -81,7 +81,7 @@ async function startTest() {
 
         // POPRAWKA: Dodajemy opóźnienie, aby przeglądarka (szczególnie mobile)
         // zdążyła przerysować wynik Pingu przed zamrożeniem wątku przez Workery.
-        await new Promise(r => setTimeout(r, 1000));
+        await new Promise(r => setTimeout(r, 2000));
 
         // 2. DOWNLOAD
         el('card-down').classList.add('active');

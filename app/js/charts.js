@@ -55,12 +55,12 @@ function initEChart(domId, colorHex, dataPoints) {
             smooth: 0.8,
             showSymbol: false,
             lineStyle: {
-                width: 2,
+                width: 3,
                 color: colorHex
             },
             areaStyle: {
                 color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                    { offset: 0, color: hexToRgba(colorHex, 0.7) }, // Góra: 40% krycia
+                    { offset: 0, color: hexToRgba(colorHex, 0.9) }, // Góra: 40% krycia
                     { offset: 1, color: hexToRgba(colorHex, 0.0) }  // Dół: 0% krycia
                 ])
             },

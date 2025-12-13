@@ -173,7 +173,7 @@ export function runPing() {
 
         ws.onopen = () => {
             // POPRAWKA: Małe opóźnienie dla iOS/Safari po adresie IP
-            setTimeout(sendPing, 50);
+            setTimeout(sendPing, 100);
         };
 
         const sendPing = () => {
@@ -196,11 +196,11 @@ export function runPing() {
             
             if (count < WARMUP) {
                 count++;
-                setTimeout(sendPing, 50); 
+                setTimeout(sendPing, 100); 
             } else if (count < WARMUP + SAMPLES) {
                 pings.push(latency);
                 count++;
-                setTimeout(sendPing, 50);
+                setTimeout(sendPing, 100);
             } else {
                 finishPing();
             }
