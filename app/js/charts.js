@@ -52,7 +52,7 @@ function initEChart(domId, colorHex, dataPoints) {
             // false = brak wygładzania (linie proste)
             // true = domyślne wygładzanie (~0.5)
             // wartość 0.0 - 1.0 = stopień krzywizny (np. 0.3 to lekkie, 0.8 to bardzo okrągłe)
-            smooth: 0.8,
+            smooth: 1.0,
             showSymbol: false,
             lineStyle: {
                 width: 3,
