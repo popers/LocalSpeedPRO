@@ -3,6 +3,8 @@ import logging
 import datetime
 from sqlalchemy.orm import Session
 from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
+from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from .database import Settings, SpeedResult
@@ -95,6 +97,18 @@ def cleanup_old_backups(service, folder_id, retention_days):
     
     return deleted_count
 
+def translate_error(error_msg: str) -> str:
+    """Tłumaczy techniczne komunikaty błędów Google na język polski."""
+    if "invalid_grant" in error_msg or "Token has been expired" in error_msg:
+        return "Token wygasł lub został unieważniony (wymagane ponowne połączenie)"
+    if "File not found" in error_msg:
+        return "Nie znaleziono pliku lub folderu na Google Drive"
+    if "quotaExceeded" in error_msg:
+        return "Brak miejsca na Google Drive"
+    if "dailyLimitExceeded" in error_msg:
+        return "Przekroczono dzienny limit zapytań API"
+    return error_msg
+
 def perform_backup_logic(db: Session):
     settings = db.query(Settings).filter(Settings.id == 1).first()
     
@@ -105,12 +119,31 @@ def perform_backup_logic(db: Session):
         return {"status": "skipped", "message": "GDrive disabled or token missing"}
 
     try:
-        creds = Credentials.from_authorized_user_info(json.loads(settings.gdrive_token_json), SCOPES)
+        # 1. Wczytanie credentials
+        creds_data = json.loads(settings.gdrive_token_json)
+        creds = Credentials.from_authorized_user_info(creds_data, SCOPES)
+        
+        # 2. Aktywne odświeżenie tokena jeśli jest wygasły
+        # To pozwala wyłapać błąd 'invalid_grant' ZANIM spróbujemy wysłać plik
+        try:
+            if creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+                # Zapisujemy odświeżony token do bazy, aby nie odświeżać go przy każdym zapytaniu
+                settings.gdrive_token_json = creds.to_json()
+                db.commit()
+                logger.info("Token Google Drive został pomyślnie odświeżony.")
+        except RefreshError as refresh_err:
+            logger.error(f"Błąd odświeżania tokena: {refresh_err}")
+            # Jeśli nie udało się odświeżyć (np. invalid_grant), rzucamy wyjątek, który obsłuży główny blok except
+            raise Exception(f"invalid_grant: {str(refresh_err)}")
+
+        # 3. Budowanie serwisu
         service = build('drive', 'v3', credentials=creds)
         
         folder_id = None
         folder_name = settings.gdrive_folder_name or "LocalSpeed_Backup"
         
+        # Sprawdzanie folderu
         q = f"mimeType='application/vnd.google-apps.folder' and name='{folder_name}' and trashed=false"
         results = service.files().list(q=q, spaces='drive', fields='files(id, name)').execute()
         items = results.get('files', [])
@@ -122,6 +155,7 @@ def perform_backup_logic(db: Session):
         else:
             folder_id = items[0]['id']
 
+        # Generowanie SQL
         sql_content = generate_sql_dump(db)
         
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
@@ -132,20 +166,21 @@ def perform_backup_logic(db: Session):
         
         file_metadata = { 'name': file_name, 'parents': [folder_id] }
         
+        # Upload
         uploaded_file = service.files().create(
             body=file_metadata,
             media_body=media,
             fields='id'
         ).execute()
 
+        # Retencja
         retention_days = settings.gdrive_retention_days
         if retention_days and retention_days > 0:
             cleanup_old_backups(service, folder_id, retention_days)
 
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         settings.gdrive_last_backup = now_str
-        # ZMIANA: Usunięto dopisek (Auto)
-        settings.gdrive_status = "Sukces"
+        settings.gdrive_status = "Sukces" # Prosty status sukcesu
         db.commit()
         
         logger.info(f"Backup auto-run success: {file_name}")
@@ -154,6 +189,18 @@ def perform_backup_logic(db: Session):
     except Exception as e:
         error_msg = str(e)
         logger.error(f"Backup Service Error: {error_msg}")
-        settings.gdrive_status = f"Błąd Auto: {error_msg[:50]}"
+        
+        # Tłumaczenie błędu
+        translated_msg = translate_error(error_msg)
+        
+        # Logika krytyczna: Jeśli token jest nieważny, wyłączamy backup, żeby nie spamować błędami
+        if "invalid_grant" in error_msg or "Token has been expired" in error_msg:
+            settings.gdrive_enabled = False # Wyłączamy backup
+            settings.gdrive_status = f"Błąd: {translated_msg}"
+        else:
+            # Dla innych błędów (np. brak sieci) nie wyłączamy backupu całkowicie, tylko logujemy błąd
+            # Skracamy komunikat, żeby nie rozwalił UI
+            settings.gdrive_status = f"Błąd: {translated_msg[:100]}"
+            
         db.commit()
         raise e

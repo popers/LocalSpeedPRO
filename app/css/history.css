@@ -360,7 +360,7 @@ tr.selected {
     }
     td:nth-child(2) small {
         display: block;
-        font-size: 0.8rem;
+        font-size: 0.60rem;
         opacity: 0.6;
         font-weight: 400;
         margin-top: 2px;

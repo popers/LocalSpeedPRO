@@ -117,7 +117,7 @@ export const translations = {
         txt_every: "co",
         txt_days: "dni",
         txt_day: "dzień",
-        btn_select_all_mobile: "Zaznacz wszystkie karty",
+        btn_select_all_mobile: "Zaznacz wszystko",
 
         // --- LOGIN PAGE ---
         login_header: "LocalSpeed PRO",
@@ -235,7 +235,7 @@ export const translations = {
         txt_every: "every",
         txt_days: "days",
         txt_day: "day",
-        btn_select_all_mobile: "Select all cards",
+        btn_select_all_mobile: "Select all",
 
         // --- LOGIN PAGE ---
         login_header: "LocalSpeed PRO",

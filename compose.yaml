@@ -24,8 +24,13 @@ services:
       - ./app:/app
       - ./logs:/app/logs
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/api/auth/status"]
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:80/api/auth/status
       interval: 30s
+      start_period: 10s
       timeout: 10s
       retries: 3
   db:
