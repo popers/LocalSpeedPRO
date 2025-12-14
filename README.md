@@ -1,4 +1,4 @@
-# LocalSpeed PRO ![version](https://img.shields.io/badge/v0.3-purple)
+# LocalSpeed PRO ![version](https://img.shields.io/badge/v0.4-purple)
 
 A lightweight, self-hosted network performance testing tool designed for Docker. Built with a Python FastAPI backend and a vanilla JavaScript frontend using Web Workers to ensure accurate high-speed measurements for LAN and WAN environments.
 
@@ -54,7 +54,17 @@ services:
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
     volumes:
-      - ./logs:/app/logs 
+      - ./logs:/app/logs
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:80/api/auth/status
+      interval: 30s
+      start_period: 10s
+      timeout: 10s
+      retries: 3
     depends_on:
       db:
         condition: service_healthy
